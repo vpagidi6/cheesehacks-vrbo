@@ -17,9 +17,7 @@
   function sendUsage(data) {
     try {
       if (DEBUG) console.log("[AI Token Tracker] Sending usage:", data.provider, data.totalTokens, "tokens");
-      document.dispatchEvent(
-        new CustomEvent("__AI_TOKEN_TRACKER_USAGE__", { detail: data })
-      );
+      window.postMessage({ type: "__AI_TOKEN_TRACKER_USAGE__", payload: data }, "*");
     } catch (_) {}
   }
 
@@ -153,10 +151,8 @@
 
     const pageHost = (typeof location !== "undefined" && location.hostname) || "";
     const isChatGPTPage = pageHost.includes("chatgpt.com") || pageHost.includes("openai.com");
-    const isChatGPTLatR = url.includes("backend-api/lat/r");
-    const isChatGPTUrl = isChatGPTLatR || url.includes("openai.com") || url.includes("chatgpt.com") || (isChatGPTPage && (url.startsWith("/") || url.includes("/r")));
-
-    if (isChatGPTPage && !isChatGPTLatR) return;
+    const isChatGPTUrl = url.includes("backend-api") || url.includes("openai.com") || url.includes("chatgpt.com") || (isChatGPTPage && (url.startsWith("/") || url.includes("/r")));
+    if (isChatGPTPage && !url.includes("backend-api") && !url.includes("/r")) return;
 
     if (DEBUG && isChatGPTUrl) {
       console.log("[AI Token Tracker] Processing response from:", url.substring(0, 100) || "(relative)");

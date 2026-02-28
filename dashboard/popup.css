@@ -220,20 +220,6 @@ body {
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
-.btn-test {
-  width: 100%;
-  padding: 8px;
-  background: var(--border);
-  border: none;
-  border-radius: 8px;
-  color: var(--text);
-  font-size: 0.8rem;
-  cursor: pointer;
-  margin-bottom: 6px;
-}
-.btn-test:hover {
-  background: var(--text-muted);
-}
 .btn-clear:hover {
   background: rgba(248, 81, 73, 0.1);
   border-color: var(--danger);

@@ -56,7 +56,7 @@ function render(history) {
   historyList.innerHTML = "";
   const recent = history.slice(-20).reverse();
   if (recent.length === 0) {
-    historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT – tokens are estimated from text.</div>`;
+    historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT, Claude, or Gemini – tokens are estimated from text.</div>`;
   } else {
     recent.forEach((h) => {
       const item = document.createElement("div");
@@ -70,22 +70,6 @@ function render(history) {
     });
   }
 }
-
-document.getElementById("btn-test").addEventListener("click", () => {
-  chrome.storage.local.get(["usageHistory"], (r) => {
-    const history = r.usageHistory || [];
-    history.push({
-      provider: "chatgpt",
-      model: "estimated",
-      inputTokens: 50,
-      outputTokens: 50,
-      totalTokens: 100,
-      timestamp: Date.now(),
-      url: "",
-    });
-    chrome.storage.local.set({ usageHistory: history.slice(-10000) });
-  });
-});
 
 document.getElementById("btn-clear").addEventListener("click", () => {
   if (confirm("Clear all usage data?")) {

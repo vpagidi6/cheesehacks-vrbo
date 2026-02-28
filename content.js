@@ -1,93 +1,187 @@
-function estimateTokens(text) {
-  if (!text || typeof text !== "string") return 0;
-  return Math.ceil(text.length / 5);
-}
+(function () {
+  "use strict";
 
-function getText(el) {
-  if (!el) return "";
-  return (el.innerText || el.textContent || "").trim();
-}
-
-function observeChat() {
-  let lastArticleCount = 0;
-  let lastTextLen = 0;
-  let stableCount = 0;
-  const processedArticleCounts = new Set();
-
-  const checkMessages = () => {
-    let articles = document.querySelectorAll("article");
-    if (articles.length === 0) {
-      articles = document.querySelectorAll('[data-message-author-role="assistant"]');
-      if (articles.length === 0) articles = document.querySelectorAll('[class*="markdown"]');
-    }
-    if (articles.length === 0) return;
-
-    const lastArticle = articles[articles.length - 1];
-    const text = getText(lastArticle);
-    const textLen = text.length;
-
-    if (textLen < 30) return;
-
-    if (articles.length > lastArticleCount) {
-      lastArticleCount = articles.length;
-      lastTextLen = textLen;
-      stableCount = 0;
-      return;
-    }
-
-    if (Math.abs(textLen - lastTextLen) < 50) {
-      stableCount++;
-    } else {
-      lastTextLen = textLen;
-      stableCount = 0;
-    }
-
-    if (stableCount < 3) return;
-    if (processedArticleCounts.has(lastArticleCount)) return;
-    processedArticleCounts.add(lastArticleCount);
-    if (processedArticleCounts.size > 200) processedArticleCounts.clear();
-
-    let userText = "";
-    if (articles.length >= 2) {
-      userText = getText(articles[articles.length - 2]);
-    }
-
-    const inputTokens = estimateTokens(userText);
-    const outputTokens = estimateTokens(text);
-    const totalTokens = inputTokens + outputTokens;
-    if (totalTokens < 10) return;
-
-    chrome.storage.local.get(["usageHistory"], (r) => {
-      const history = r.usageHistory || [];
-      history.push({
-        provider: "chatgpt",
-        model: "estimated",
-        inputTokens,
-        outputTokens,
-        totalTokens,
-        timestamp: Date.now(),
-        url: "",
-      });
-      chrome.storage.local.set({ usageHistory: history.slice(-10000) });
-    });
-
-    stableCount = 0;
+  var SITES = {
+    chatgpt: {
+      hostnames: ["chatgpt.com", "chat.openai.com"],
+      assistantSelector: "[data-message-author-role='assistant']",
+      userPromptSelector: "[data-message-author-role='user']",
+      provider: "chatgpt",
+    },
+    claude: {
+      hostnames: ["claude.ai"],
+      assistantSelector: ".font-claude-message",
+      userPromptSelector: "[data-testid='user-message']",
+      provider: "claude",
+    },
+    gemini: {
+      hostnames: ["gemini.google.com", "aistudio.google.com"],
+      assistantSelector: "[role='article'], [class*='model-response'], [class*='markdown']",
+      userPromptSelector: null,
+      provider: "gemini",
+    },
   };
 
-  const startObserving = () => {
-    const container = document.querySelector("main") || document.querySelector("#__next") || document.body;
-    const obs = new MutationObserver(() => {
-      setTimeout(checkMessages, 500);
-    });
-    obs.observe(container, { childList: true, subtree: true });
-    setInterval(checkMessages, 2000);
-  };
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", startObserving);
-  } else {
-    setTimeout(startObserving, 2000);
+  function getConfig() {
+    var host = (typeof location !== "undefined" && location.hostname) || "";
+    for (var key in SITES) {
+      var cfg = SITES[key];
+      if (cfg.hostnames.some(function (h) { return host.indexOf(h) !== -1; })) return cfg;
+    }
+    return null;
   }
-}
 
-observeChat();
+  function estimateTokens(text) {
+    if (!text || typeof text !== "string") return 0;
+    return Math.ceil(text.length / 4);
+  }
+
+  function getText(el) {
+    if (!el) return "";
+    var t = el.innerText || el.textContent || "";
+    return (typeof t === "string" ? t : "").trim();
+  }
+
+  function getLastUserMessageText(config) {
+    if (!config.userPromptSelector) return "";
+    try {
+      var nodes = document.querySelectorAll(config.userPromptSelector);
+      var last = nodes[nodes.length - 1];
+      return last ? getText(last) : "";
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function handleAssistantMessage(node, config) {
+    if (node.dataset && node.dataset.aiTokenProcessed === "true") return;
+
+    var text = getText(node);
+    if (!text || text.length < 10) return;
+
+    var outputTokens = estimateTokens(text);
+    var inputText = getLastUserMessageText(config);
+    var inputTokens = estimateTokens(inputText);
+
+    try {
+      chrome.runtime.sendMessage({
+        type: "LLM_USAGE",
+        payload: {
+          provider: config.provider,
+          model: "estimated",
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+          totalTokens: inputTokens + outputTokens,
+          timestamp: Date.now(),
+          url: (typeof location !== "undefined" && location.href) || "",
+        },
+      });
+    } catch (_) {}
+
+    if (node.dataset) node.dataset.aiTokenProcessed = "true";
+  }
+
+  function waitForStability(node, config, callback) {
+    var lastLength = getText(node).length;
+    var stableCount = 0;
+    var interval = setInterval(function () {
+      var currentLength = getText(node).length;
+      if (currentLength === lastLength) {
+        stableCount++;
+      } else {
+        stableCount = 0;
+        lastLength = currentLength;
+      }
+      if (stableCount >= 5) {
+        clearInterval(interval);
+        callback(node, config);
+      }
+    }, 200);
+  }
+
+  function findAssistantNodes(root, selector) {
+    var selectors = selector.split(",").map(function (s) { return s.trim(); });
+    var out = [];
+    function collect(el) {
+      if (!el || el.nodeType !== 1) return;
+      for (var i = 0; i < selectors.length; i++) {
+        try {
+          if (el.matches && el.matches(selectors[i])) {
+            out.push(el);
+            return;
+          }
+        } catch (_) {}
+      }
+      for (var j = 0; j < el.children.length; j++) collect(el.children[j]);
+    }
+    for (var i = 0; i < selectors.length; i++) {
+      try {
+        var list = root.querySelectorAll(selectors[i]);
+        for (var k = 0; k < list.length; k++) out.push(list[k]);
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  function isInAddedTree(node, addedNode) {
+    var p = node;
+    while (p) {
+      if (p === addedNode) return true;
+      p = p.parentElement;
+    }
+    return false;
+  }
+
+  function run(config) {
+    var watching = new Set();
+
+    function processCandidate(el) {
+      if (!el || el.nodeType !== 1) return;
+      if (el.dataset && el.dataset.aiTokenProcessed === "true") return;
+      if (watching.has(el)) return;
+      var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
+      var matches = false;
+      for (var p = 0; p < parts.length; p++) {
+        try {
+          if (el.matches && el.matches(parts[p])) { matches = true; break; }
+        } catch (_) {}
+      }
+      if (!matches) return;
+      var partsSel = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
+      for (var q = 0; q < partsSel.length; q++) {
+        var inner = el.querySelector && el.querySelector(partsSel[q]);
+        if (inner && inner !== el) return;
+      }
+
+      watching.add(el);
+      waitForStability(el, config, function (node, cfg) {
+        watching.delete(node);
+        handleAssistantMessage(node, cfg);
+      });
+    }
+
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        for (var i = 0; i < mutation.addedNodes.length; i++) {
+          var node = mutation.addedNodes[i];
+          if (!node || node.nodeType !== 1) continue;
+          processCandidate(node);
+          if (node.querySelectorAll) {
+            try {
+              var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
+              for (var p = 0; p < parts.length; p++) {
+                var list = node.querySelectorAll(parts[p]);
+                for (var k = 0; k < list.length; k++) processCandidate(list[k]);
+              }
+            } catch (_) {}
+          }
+        }
+      });
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  var config = getConfig();
+  if (config) run(config);
+})();
