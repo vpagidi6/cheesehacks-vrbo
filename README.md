@@ -20,11 +20,11 @@ Built for hackathon use.
 2. Open Chrome and go to `chrome://extensions`
 3. Enable **Developer mode** (top right)
 4. Click **Load unpacked**
-5. Select the `cheesehacks-vrbo` folder
+5. Select the **`extension`** folder in this repo
 
 ## How It Works
 
-The extension injects a script into ChatGPT, Claude, and Gemini pages that intercepts `fetch` and `XMLHttpRequest` calls. When API responses include token usage (`prompt_tokens`, `completion_tokens`, etc.), the extension captures and stores that data. The dashboard displays aggregated usage and estimates environmental impact based on research (~10 mg CO₂ per token).
+The extension observes assistant messages on ChatGPT, Claude, and Gemini pages, estimates token counts from text length, and stores usage locally. When you’re logged in (via the popup), usage is also sent to your backend. The dashboard displays aggregated usage and estimates environmental impact.
 
 ## Environmental Impact Estimate
 
@@ -37,14 +37,19 @@ Estimates use:
 
 ```
 cheesehacks-vrbo/
-├── manifest.json      # Extension manifest (Manifest V3)
-├── content.js         # Injects injector into LLM pages
-├── injector.js        # Intercepts fetch/XHR, parses token usage
-├── background.js      # Receives usage, stores in chrome.storage
-└── dashboard/
-    ├── popup.html     # Extension popup UI
-    ├── popup.css      # Styles
-    └── popup.js       # Loads data, renders dashboard
+├── extension/              # Chrome extension (load this folder in chrome://extensions)
+│   ├── manifest.json       # Manifest V3
+│   ├── content.js         # Observes LLM pages, estimates tokens, sends usage
+│   ├── background.js      # Receives usage, stores locally, POSTs to backend when logged in
+│   ├── dashboard/
+│   │   ├── popup.html     # Popup UI (login, signup, dashboard)
+│   │   ├── popup.css
+│   │   └── popup.js
+│   └── icons/
+├── firebase-backend/       # Python (Flask) backend for auth + Firestore usage storage
+├── BACKEND.md              # API contract for your backend
+├── FIREBASE_SETUP.md       # Firebase project setup
+└── README.md
 ```
 
 ## License

@@ -129,14 +129,14 @@ Same idea: one document per event. To get token counts per account, query `usage
 
 ---
 
-## Part 5: Example backend (Node + Firebase Admin)
+## Part 5: Example backend (Python + Firebase Admin)
 
-In the repo you’ll find a small **Node.js backend** in `firebase-backend/` that:
+In the repo you’ll find a **Python (Flask)** backend in `firebase-backend/` that:
 
 - Uses **Firebase Admin SDK** (service account key) to write to Firestore.
 - Implements **register** and **login** with email + hashed password (stored in `users` in Firestore) and returns a **JWT**.
 - Implements **POST /usage** by verifying the JWT and adding a document to `users/{userId}/usage`.
 
-You can run it locally or deploy it to Cloud Run / Cloud Functions. Use its base URL as the **API URL** in the extension.
+Run it locally (see `firebase-backend/README.md`) or deploy to Cloud Run / Cloud Functions. Use its base URL as the **API URL** in the extension popup.
 
 See `firebase-backend/README.md` for how to run and deploy it.

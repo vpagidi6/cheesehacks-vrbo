@@ -1,0 +1,22 @@
+# Environment and secrets
+.env
+*.pem
+
+# Firebase
+**/serviceAccountKey.json
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
