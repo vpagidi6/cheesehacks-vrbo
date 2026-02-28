@@ -10,14 +10,14 @@
     },
     claude: {
       hostnames: ["claude.ai"],
-      assistantSelector: ".font-claude-message",
+      assistantSelector: "div.font-claude-message, [data-test-render-count], div[class*='claude-message']",
       userPromptSelector: "[data-testid='user-message']",
       provider: "claude",
     },
     gemini: {
       hostnames: ["gemini.google.com", "aistudio.google.com"],
-      assistantSelector: "[role='article'], [class*='model-response'], [class*='markdown']",
-      userPromptSelector: null,
+      assistantSelector: "[role='article'], [class*='model-response'], [class*='markdown'], [class*='assistant-message'], [class*='bot-message'], [data-message-type='model']",
+      userPromptSelector: "[class*='user-message'], [data-message-type='user']",
       provider: "gemini",
     },
   };
@@ -53,6 +53,10 @@
     }
   }
 
+  var lastSentKey = null;
+  var lastSentTime = 0;
+  var DEDUPE_MS = 3000;
+
   function handleAssistantMessage(node, config) {
     if (node.dataset && node.dataset.aiTokenProcessed === "true") return;
 
@@ -62,6 +66,11 @@
     var outputTokens = estimateTokens(text);
     var inputText = getLastUserMessageText(config);
     var inputTokens = estimateTokens(inputText);
+    var key = config.provider + "|" + outputTokens + "|" + (outputTokens + inputTokens);
+    var now = Date.now();
+    if (key === lastSentKey && (now - lastSentTime) < DEDUPE_MS) return;
+    lastSentKey = key;
+    lastSentTime = now;
 
     try {
       chrome.runtime.sendMessage({
@@ -135,10 +144,21 @@
   function run(config) {
     var watching = new Set();
 
+    function hasProcessedOrWatchedAncestor(el) {
+      var p = el.parentElement;
+      while (p) {
+        if (p.dataset && p.dataset.aiTokenProcessed === "true") return true;
+        if (watching.has(p)) return true;
+        p = p.parentElement;
+      }
+      return false;
+    }
+
     function processCandidate(el) {
       if (!el || el.nodeType !== 1) return;
       if (el.dataset && el.dataset.aiTokenProcessed === "true") return;
       if (watching.has(el)) return;
+      if (hasProcessedOrWatchedAncestor(el)) return;
       var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
       var matches = false;
       for (var p = 0; p < parts.length; p++) {
@@ -179,7 +199,14 @@
       });
     });
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    function startObserving() {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+    if (config.provider === "claude" || config.provider === "gemini") {
+      setTimeout(startObserving, 500);
+    } else {
+      startObserving();
+    }
   }
 
   var config = getConfig();
