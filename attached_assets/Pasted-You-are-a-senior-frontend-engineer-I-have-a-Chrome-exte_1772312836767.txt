@@ -1,0 +1,127 @@
+You are a senior frontend engineer. I have a Chrome extension repo (Manifest V3) where the service worker stores token usage events in chrome.storage.local under the key "usageHistory".
+
+CURRENT BACKGROUND LOGIC:
+- background.js listens for runtime messages of type "TOKEN_USAGE"
+- it appends msg.payload to an array in chrome.storage.local called "usageHistory"
+- it keeps the last 10,000 entries
+
+MANIFEST:
+- action.default_popup is "dashboard/popup.html"
+
+TASK:
+Replace the existing dashboard popup (currently plain HTML/CSS/JS) with a React + TypeScript frontend built with Vite that compiles to static files and works as the extension popup.
+
+IMPORTANT CONSTRAINTS:
+- DO NOT change content.js / injector.js / background.js for MVP.
+- The UI must compute totals by reading and aggregating "usageHistory" client-side.
+- No backend. No external CDNs.
+- Minimal deps (react, react-dom). No Tailwind unless it’s truly painless; prefer plain CSS.
+- Build must use relative paths: Vite base must be "./" so it works inside an extension popup.
+
+DATA YOU HAVE (single source of truth):
+chrome.storage.local.get("usageHistory") returns an array of event objects. Each event was pushed from msg.payload. You must handle unknown payload shapes robustly.
+
+ASSUME usageHistory entries usually include:
+- tool OR platform identifier (e.g. "chatgpt"|"claude"|"gemini") — but may also be missing or differently named
+- token usage numbers — could be:
+  - totalTokens
+  - total_tokens
+  - prompt_tokens + completion_tokens
+  - input_tokens + output_tokens
+  - usage: { prompt_tokens, completion_tokens, total_tokens } etc.
+- timestamp — could be:
+  - ts (ms)
+  - timestamp (ms)
+  - created (seconds)
+If tool or timestamp is missing, infer tool as "unknown" and timestamp as Date.now() for display, but still count tokens.
+
+YOU MUST IMPLEMENT:
+A) Folder structure using Vite + React + TS inside `dashboard/` (recommended) so popup path can remain `dashboard/popup.html` OR change manifest to point to the built entry file (you must clearly specify which).
+B) A complete working React popup UI with tabs:
+   - Today
+   - Total
+   - Settings
+C) UI features:
+1) Today totals: tokens today, water today (oz), bottles today (16.9 oz per bottle)
+2) All-time totals: tokens total, water total (oz), bottles total
+3) Per-platform breakdown bars: ChatGPT vs Claude vs Gemini (+ Unknown)
+4) Recent activity list (last 20 events), showing tool, tokens, and time
+5) Settings stored in chrome.storage.local under key "settings":
+   settings shape:
+   {
+     ecoMode: boolean,
+     limitsEnabled: boolean,
+     tokenLimit: number,        // daily token limit
+     ozLimit: number,           // daily water oz limit
+     hardBlock: boolean,        // UI only; just warn in popup (don’t block sending yet)
+     waterIntensity: "low"|"typical"|"high"
+   }
+Defaults if missing:
+   ecoMode=true, limitsEnabled=false, tokenLimit=15000, ozLimit=16.9, hardBlock=false, waterIntensity="typical"
+6) Eco-mode tips (rule-based):
+   todayTokens < 5000 -> “You’re in the green…”
+   5000–15000 -> “Consider summarizing…”
+   >15000 -> “Try smaller models / reduce context…”
+7) Limits behavior:
+   - If limitsEnabled and todayTokens >= tokenLimit OR todayOz >= ozLimit:
+     show a prominent warning banner in the popup (“Daily limit reached”)
+     If hardBlock is enabled: show “Hard block enabled (not enforced in MVP)” text
+8) Water conversion:
+   - You will estimate water based on tokens + waterIntensity setting:
+     low: 0.5 mL / 1k tokens
+     typical: 2.0 mL / 1k tokens
+     high: 6.0 mL / 1k tokens
+   Convert mL -> oz using 1 oz = 29.5735 mL
+   Show oz with 1 decimal, bottles with 2 decimals
+9) Reset + Export:
+   - “Reset usage data” button: clears ONLY usageHistory (set to []), keep settings.
+   - “Export CSV” button: export the last 10,000 usageHistory entries (or current array) with columns:
+     ts_iso, tool, tokens_total, prompt_tokens, completion_tokens, raw_json
+     raw_json should be JSON-stringified payload for robustness.
+
+TECHNICAL REQUIREMENTS:
+- Implement a storage wrapper that uses chrome.storage.local when available, else localStorage mock for dev:
+  - storageGet(keys: string[]): Promise<Record<string, any>>
+  - storageSet(obj: Record<string, any>): Promise<void>
+- Popup auto-refresh:
+  - load on mount
+  - re-render when chrome.storage changes using chrome.storage.onChanged (if available)
+- Aggregation:
+  - Determine “today” in local time.
+  - For each event, compute tokens from payload using a resilient extractor:
+    - if totalTokens exists use it
+    - else if total_tokens exists
+    - else if prompt_tokens + completion_tokens exists
+    - else if input_tokens + output_tokens exists
+    - else if payload.usage.* exists
+    - else tokens=0
+  - Determine tool/platform:
+    - check payload.tool, payload.platform, payload.provider, payload.source
+    - else infer from hostname if payload.url exists
+    - else "unknown"
+- Styling:
+  - clean, modern, compact popup layout ~360px width
+  - use CSS variables and include a dark-mode placeholder toggle (optional)
+  - no external fonts/CDNs
+  - accessible labels + buttons
+
+OUTPUT REQUIRED:
+Return full contents of each file in separate code blocks labeled with the path. Include at minimum:
+- dashboard/package.json
+- dashboard/vite.config.ts  (base: "./")
+- dashboard/tsconfig.json
+- dashboard/index.html (or popup.html if you name it that)
+- dashboard/src/main.tsx
+- dashboard/src/App.tsx
+- dashboard/src/lib/storage.ts
+- dashboard/src/lib/extractors.ts (token/tool/timestamp extractors)
+- dashboard/src/components/* (StatCard, ToolBreakdown, RecentList, SettingsPanel, Tabs, WarningBanner)
+- dashboard/src/styles.css (or CSS modules)
+Also provide:
+1) Exact manifest.json change needed (JSON diff) to point default_popup to the built HTML file (e.g. dashboard/dist/index.html) OR explain how to keep default_popup stable if you build into dashboard/ directly.
+2) Commands to run:
+   - npm install
+   - npm run build
+3) How to load unpacked extension.
+
+GOAL: The result should be ready-to-copy and work in Chrome extension popup with MV3.
