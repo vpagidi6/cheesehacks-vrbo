@@ -1,9 +1,5 @@
-// Environmental impact estimates (per token)
-// Based on research: ~5-30 mg CO2 per token depending on model; using ~10 mg as avg
 const GRAM_CO2_PER_TOKEN = 0.01;
-// US grid: ~0.4 kg CO2 per kWh; avg car ~0.4 kg CO2 per mile
 const GRAM_CO2_PER_MILE_DRIVING = 400;
-// Trees absorb ~21 kg CO2/year
 const GRAM_CO2_PER_TREE_YEAR = 21000;
 
 function formatNumber(n) {
@@ -22,9 +18,7 @@ function getEquivalence(gramsCO2) {
   if (miles < 1) return `~${(miles * 5280).toFixed(0)} ft driven`;
   if (miles < 10) return `~${miles.toFixed(1)} mi driven`;
   const treeYears = gramsCO2 / GRAM_CO2_PER_TREE_YEAR;
-  if (treeYears >= 0.01) {
-    return `~${(treeYears * 365).toFixed(0)} days to offset`;
-  }
+  if (treeYears >= 0.01) return `~${(treeYears * 365).toFixed(0)} days to offset`;
   return `~${miles.toFixed(1)} mi driven`;
 }
 
@@ -62,11 +56,7 @@ function render(history) {
   historyList.innerHTML = "";
   const recent = history.slice(-20).reverse();
   if (recent.length === 0) {
-    historyList.innerHTML = `
-      <div class="empty-state">
-        No usage yet. Visit ChatGPT, Claude, or Gemini to start tracking.
-      </div>
-    `;
+    historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT – tokens are estimated from text.</div>`;
   } else {
     recent.forEach((h) => {
       const item = document.createElement("div");
@@ -81,14 +71,32 @@ function render(history) {
   }
 }
 
+document.getElementById("btn-test").addEventListener("click", () => {
+  chrome.storage.local.get(["usageHistory"], (r) => {
+    const history = r.usageHistory || [];
+    history.push({
+      provider: "chatgpt",
+      model: "estimated",
+      inputTokens: 50,
+      outputTokens: 50,
+      totalTokens: 100,
+      timestamp: Date.now(),
+      url: "",
+    });
+    chrome.storage.local.set({ usageHistory: history.slice(-10000) });
+  });
+});
+
 document.getElementById("btn-clear").addEventListener("click", () => {
   if (confirm("Clear all usage data?")) {
-    chrome.storage.local.set({ usageHistory: [] }, () => {
-      render([]);
-    });
+    chrome.storage.local.set({ usageHistory: [] }, () => render([]));
   }
 });
 
-chrome.storage.local.get(["usageHistory"], (result) => {
-  render(result.usageHistory || []);
+function loadAndRender() {
+  chrome.storage.local.get(["usageHistory"], (r) => render(r.usageHistory || []));
+}
+loadAndRender();
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.usageHistory) loadAndRender();
 });

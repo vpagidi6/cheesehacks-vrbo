@@ -4,6 +4,15 @@
   try {
     if (typeof document === "undefined") return;
 
+    const pageHost = (typeof location !== "undefined" && location.hostname) || "";
+    const isChatGPT = pageHost.includes("chatgpt.com") || pageHost.includes("openai.com");
+    if (isChatGPT && navigator.serviceWorker) {
+      navigator.serviceWorker.register = function () {
+        return Promise.resolve({ scope: "/", updateViaCache: () => {}, unregister: () => Promise.resolve() });
+      };
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    }
+
     const DEBUG = false;
   function sendUsage(data) {
     try {
@@ -147,8 +156,7 @@
     const isChatGPTLatR = url.includes("backend-api/lat/r");
     const isChatGPTUrl = isChatGPTLatR || url.includes("openai.com") || url.includes("chatgpt.com") || (isChatGPTPage && (url.startsWith("/") || url.includes("/r")));
 
-    if (isChatGPTPage && !isChatGPTLatR && url.includes("backend-api")) return;
-    if (isChatGPTPage && Date.now() - SCRIPT_LOAD_TIME < 4000) return;
+    if (isChatGPTPage && !isChatGPTLatR) return;
 
     if (DEBUG && isChatGPTUrl) {
       console.log("[AI Token Tracker] Processing response from:", url.substring(0, 100) || "(relative)");
@@ -207,10 +215,11 @@
     }
 
     if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0 || usage.totalTokens > 0)) {
-      const dedupeKey = usage.url + "|" + usage.totalTokens + "|" + Math.floor(Date.now() / 2000);
-      if (recentSends.get(dedupeKey)) return;
-      recentSends.set(dedupeKey, true);
-      if (recentSends.size > 100) recentSends.clear();
+      const key = usage.totalTokens + "_" + Date.now();
+      const last = recentSends.get(usage.url);
+      if (last && last.tokens === usage.totalTokens && Date.now() - last.ts < 800) return;
+      recentSends.set(usage.url, { tokens: usage.totalTokens, ts: Date.now() });
+      if (recentSends.size > 50) recentSends.clear();
       sendUsage(usage);
     }
   }
@@ -232,30 +241,31 @@
     };
   }
   installFetch();
-  setInterval(installFetch, 1500);
+  setInterval(installFetch, 200);
 
-  // Intercept XMLHttpRequest - reapply periodically
-  const origOpen = XMLHttpRequest.prototype.open;
-  const origSend = XMLHttpRequest.prototype.send;
-  function installXHR() {
-    XMLHttpRequest.prototype.open = function (method, url) {
-      this._trackUrl = url;
+  const NativeXHR = window.XMLHttpRequest;
+  const PatchedXHR = function () {
+    const xhr = new NativeXHR();
+    const origOpen = xhr.open;
+    const origSend = xhr.send;
+    xhr.open = function (m, url) {
+      xhr._trackUrl = url;
       return origOpen.apply(this, arguments);
     };
-    XMLHttpRequest.prototype.send = function () {
-      if (DEBUG && this._trackUrl && this._trackUrl.includes("backend-api/lat/r")) {
-        console.log("[AI Token Tracker] Intercepted XHR to lat/r");
-      }
-      this.addEventListener("load", function () {
-        if (this._trackUrl && this.responseText) {
-          processResponse(this._trackUrl, this.responseText);
-        }
+    xhr.send = function () {
+      xhr.addEventListener("load", function () {
+        if (xhr._trackUrl && xhr.responseText) processResponse(xhr._trackUrl, xhr.responseText);
       });
       return origSend.apply(this, arguments);
     };
+    return xhr;
+  };
+  PatchedXHR.prototype = NativeXHR.prototype;
+  function installXHR() {
+    window.XMLHttpRequest = PatchedXHR;
   }
   installXHR();
-  setInterval(installXHR, 1500);
+  setInterval(installXHR, 200);
   } catch (e) {
     console.debug("[AI Token Tracker] Init error:", e);
   }
