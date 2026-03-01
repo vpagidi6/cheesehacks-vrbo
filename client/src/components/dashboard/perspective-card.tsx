@@ -201,6 +201,7 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
               <span className="text-sm ml-1">miles driven</span>
             </div>
           </div>
+          </div>
 
         </div>
       </CardContent>
