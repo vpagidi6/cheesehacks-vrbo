@@ -29,13 +29,11 @@ GRAM_CO2_PER_MILE_DRIVING = 400
 GRAM_CO2_PER_TREE_YEAR = 21000
 LITER_WATER_PER_TOKEN = 0.0005  # ~0.5 L per 1000 tokens (cooling + electricity)
 
-if not Path(cred_path).exists():
-    raise SystemExit(
-        "Firebase init failed. Put serviceAccountKey.json in this folder "
-        "or set GOOGLE_APPLICATION_CREDENTIALS."
-    )
-
-cred = credentials.Certificate(cred_path)
+# Use service account key file if present; otherwise Application Default Credentials (GCP Compute Engine, Cloud Run)
+if Path(cred_path).exists():
+    cred = credentials.Certificate(cred_path)
+else:
+    cred = credentials.ApplicationDefault()
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
