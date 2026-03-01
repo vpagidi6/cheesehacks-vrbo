@@ -73,10 +73,19 @@ export function clearUser(): void {
   // No-op: use signOut from useAuth
 }
 
-function mapBackendStatsToSummary(stats: BackendStatsResponse): SummaryResponse {
-  const today = new Date().toISOString().slice(0, 10);
+function mapBackendStatsToSummary(stats: BackendStatsResponse, month: string): SummaryResponse {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const totalTokens = stats.totalTokens ?? 0;
   const todayMl = Math.round(totalTokens * ML_PER_TOKEN);
+  const [year, m] = month.split('-').map(Number);
+  const daysInMonth = new Date(year, m, 0).getDate();
+  const todayNum = now.getMonth() + 1 === m && now.getFullYear() === year ? now.getDate() : daysInMonth;
+  const monthDays = Array.from({ length: todayNum }, (_, i) => ({
+    date: `${month}-${String(i + 1).padStart(2, '0')}`,
+    ml: i + 1 === todayNum ? todayMl : 0,
+    tokens: i + 1 === todayNum ? totalTokens : 0,
+  }));
   return {
     today: {
       ml: todayMl,
@@ -85,7 +94,7 @@ function mapBackendStatsToSummary(stats: BackendStatsResponse): SummaryResponse 
     },
     dailyLimitMl: DEFAULT_DAILY_LIMIT_ML,
     estimationMode: DEFAULT_ESTIMATION_MODE,
-    monthDays: [],
+    monthDays,
     byProvider: stats.totalByProvider ?? {},
     totalCO2: stats.totalCO2,
     totalWater: stats.totalWater,
@@ -96,8 +105,18 @@ function mapBackendStatsToSummary(stats: BackendStatsResponse): SummaryResponse 
 export async function fetchSummary(_month: string): Promise<SummaryResponse> {
   if (USE_MOCK) {
     await new Promise((r) => setTimeout(r, 400));
+    const [year, m] = _month.split('-').map(Number);
+    const daysInMonth = new Date(year, m, 0).getDate();
+    const dynamicMock: SummaryResponse = {
+      ...mockSummary,
+      monthDays: Array.from({ length: daysInMonth }, (_, i) => ({
+        date: `${_month}-${String(i + 1).padStart(2, '0')}`,
+        ml: Math.floor(Math.random() * 600),
+        tokens: Math.floor(Math.random() * 8000),
+      })),
+    };
     const userId = auth.currentUser?.uid;
-    return userId ? applyLocalSettings(mockSummary, userId) : mockSummary;
+    return userId ? applyLocalSettings(dynamicMock, userId) : dynamicMock;
   }
 
   const user = auth.currentUser;
@@ -112,7 +131,7 @@ export async function fetchSummary(_month: string): Promise<SummaryResponse> {
     throw new Error((err as { error?: string }).error || `Failed to fetch stats: ${res.statusText}`);
   }
   const data: BackendStatsResponse = await res.json();
-  return applyLocalSettings(mapBackendStatsToSummary(data), user.uid);
+  return applyLocalSettings(mapBackendStatsToSummary(data, _month), user.uid);
 }
 
 export async function saveSettings(
