@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sustAIn</title>
+    <link rel="stylesheet" href="popup.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <!-- Login screen (shown when not logged in) -->
+      <div id="login-screen" class="login-screen">
+        <header class="header">
+          <h1>sustAIn</h1>
+          <p class="tagline">Sign in to sync your usage</p>
+        </header>
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <p id="auth-error" class="auth-error" hidden></p>
+          <button type="submit" class="btn btn-primary" id="btn-login">Log in</button>
+        </form>
+        <p class="auth-footer">
+          Don’t have an account? <button type="button" class="btn-link" id="btn-show-signup">Sign up</button>
+        </p>
+      </div>
+
+      <!-- Sign up screen -->
+      <div id="signup-screen" class="login-screen" hidden>
+        <header class="header">
+          <h1>sustAIn</h1>
+          <p class="tagline">Create an account</p>
+        </header>
+        <form id="signup-form" class="auth-form">
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input type="email" id="signup-email" required placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" required placeholder="••••••••" autocomplete="new-password" minlength="6" />
+          </div>
+          <p id="signup-error" class="auth-error" hidden></p>
+          <button type="submit" class="btn btn-primary" id="btn-signup">Sign up</button>
+        </form>
+        <p class="auth-footer">
+          Already have an account? <button type="button" class="btn-link" id="btn-show-login">Log in</button>
+        </p>
+      </div>
+
+      <!-- Dashboard (stats) – shown when logged in -->
+      <div id="dashboard-screen" class="dashboard-screen" hidden>
+        <header class="header header-row">
+          <div>
+            <h1>sustAIn</h1>
+            <p class="tagline">Your environmental impact from AI usage</p>
+          </div>
+          <div class="user-badge">
+            <span id="user-email" class="user-email"></span>
+            <button type="button" class="btn-link btn-logout" id="btn-logout">Log out</button>
+          </div>
+        </header>
+        <section class="impact-cards">
+          <div class="card total-tokens">
+            <span class="card-label">Total Tokens</span>
+            <span class="card-value" id="total-tokens">0</span>
+          </div>
+          <div class="card co2">
+            <span class="card-label">Est. CO₂</span>
+            <span class="card-value" id="total-co2">0 g</span>
+          </div>
+          <div class="card equivalence">
+            <span class="card-label">Equivalent to</span>
+            <span class="card-value" id="equivalence">—</span>
+          </div>
+        </section>
+        <section class="by-provider">
+          <h2>By Platform</h2>
+          <div class="provider-grid" id="provider-grid"></div>
+        </section>
+        <section class="history">
+          <h2>Recent Activity</h2>
+          <div class="history-list" id="history-list"></div>
+        </section>
+        <footer class="footer">
+          <button class="btn-clear" id="btn-clear">Clear local data</button>
+        </footer>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

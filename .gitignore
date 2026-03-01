@@ -1,6 +1,37 @@
-node_modules
-dist
+# Node / Vite
+node_modules/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+*.pem
+
+# Firebase service account keys
+**/serviceAccountKey.json
+**/serviceAccountKey*.json
+**/serviceAccount.json
+**/serviceAccount*.json
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+
+# Logs
+*.log
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Repo-specific (keep if used)
 server/public
 vite.config.ts.*
 *.tar.gz
