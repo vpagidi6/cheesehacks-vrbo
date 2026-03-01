@@ -1,6 +1,6 @@
 # sustAIn
 
-## By: Vamshi Pagidi, Obaid Khwaja, Benjamin Joseph, and Raza Rashid
+### By: Vamshi Pagidi, Obaid Khwaja, Benjamin Joseph, and Raza Rashid
 
 sustAIn helps people understand the hidden environmental cost of everyday AI use. It tracks LLM activity across ChatGPT, Claude, Gemini, and AI Studio, then turns token usage into clear impact metrics like water usage and CO₂ equivalents so users can make smarter prompting decisions in real time and truly understand the impact of the tools they use everyday.
 
