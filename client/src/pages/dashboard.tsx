@@ -4,12 +4,11 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCcw, Droplet, Zap } from "lucide-react";
-import { ProgressBar } from "@/components/dashboard/progress-bar";
 import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown";
-import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
 import { WaterUsageCard } from "@/components/dashboard/water-usage-card";
 import { CO2EmissionsCard } from "@/components/dashboard/co2-emissions-card";
 import { PerspectiveCard } from "@/components/dashboard/perspective-card";
+import { WaterBottleCard } from "@/components/dashboard/water-bottle-card";
 
 export default function Dashboard() {
   const now = new Date();
@@ -130,16 +129,8 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Monthly Calendar Card */}
-            <Card className="md:col-span-3 shadow-sm border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-xl">Monthly Heatmap</CardTitle>
-                <CardDescription>Daily water footprint across the month</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CalendarHeatmap month={currentMonth} days={data.monthDays} />
-              </CardContent>
-            </Card>
+            {/* Water Bottle Visualizer */}
+            <WaterBottleCard ml={data.today.ml} />
           </div>
         )}
       </div>
