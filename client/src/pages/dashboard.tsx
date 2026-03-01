@@ -56,9 +56,9 @@ export default function Dashboard() {
         )}
 
         {data && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
             {/* Unified Usage Card */}
-            <Card className="lg:col-span-2 shadow-sm border-slate-200 overflow-hidden flex flex-col">
+            <Card className="md:col-span-2 shadow-sm border-slate-200 overflow-hidden flex flex-col">
               <CardHeader className="pb-4 border-b border-slate-100 z-10 bg-white">
                 <CardTitle className="text-xl flex items-center gap-2">
                   Today's Usage
@@ -110,17 +110,8 @@ export default function Dashboard() {
               </div>
             </Card>
 
-            {/* Perspective Card (Full Width underneath Usage, above Heatmap) */}
-            <div className="lg:col-span-3">
-              <PerspectiveCard 
-                waterLiters={data.today.ml / 1000} // Convert mL to Liters
-                milesDrivenString={data.equivalence}
-                dailyLimitMl={data.dailyLimitMl}
-              />
-            </div>
-
             {/* By Provider Card */}
-            <Card className="shadow-sm border-slate-200">
+            <Card className="shadow-sm border-slate-200 lg:col-span-1">
               <CardHeader>
                 <CardTitle className="text-lg">Tokens by AI Model</CardTitle>
                 <CardDescription>Breakdown of tokens processed per AI provider</CardDescription>
@@ -130,8 +121,17 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Perspective Card (Full Width underneath Usage, above Heatmap) */}
+            <div className="md:col-span-3">
+              <PerspectiveCard 
+                waterLiters={data.today.ml / 1000} // Convert mL to Liters
+                milesDrivenString={data.equivalence}
+                dailyLimitMl={data.dailyLimitMl}
+              />
+            </div>
+
             {/* Monthly Calendar Card */}
-            <Card className="md:col-span-2 lg:col-span-3 shadow-sm border-slate-200">
+            <Card className="md:col-span-3 shadow-sm border-slate-200">
               <CardHeader>
                 <CardTitle className="text-xl">Monthly Heatmap</CardTitle>
                 <CardDescription>Daily water footprint across the month</CardDescription>
