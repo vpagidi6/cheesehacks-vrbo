@@ -1,17 +1,19 @@
 import { SummaryResponse, EstimationMode } from "./types";
+import { auth } from "@/lib/firebase";
+
 const USE_MOCK = true;
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 export function getUser(): string | null {
-  return localStorage.getItem("water_user");
+  return auth.currentUser?.uid ?? null;
 }
 
-export function setUser(email: string): void {
-  localStorage.setItem("water_user", email);
+export function setUser(_email: string): void {
+  // No-op: auth is managed by Firebase
 }
 
 export function clearUser(): void {
-  localStorage.removeItem("water_user");
+  // No-op: use signOut from useAuth
 }
 
 export async function fetchSummary(month: string): Promise<SummaryResponse> {

@@ -1,22 +1,22 @@
 import { useLocation, Link } from "wouter";
-import { getUser, clearUser } from "@/api/client";
+import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 import { Droplets, LayoutDashboard, Settings, LogOut } from "lucide-react";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
-  const user = getUser();
+  const { user, loading, logout } = useAuth();
 
   useEffect(() => {
-    if (!user && location !== "/login") {
+    if (!loading && !user && location !== "/login") {
       setLocation("/login");
     }
-  }, [user, location, setLocation]);
+  }, [loading, user, location, setLocation]);
 
-  if (!user) return null;
+  if (loading || !user) return null;
 
-  const handleLogout = () => {
-    clearUser();
+  const handleLogout = async () => {
+    await logout();
     setLocation("/login");
   };
 
