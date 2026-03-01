@@ -1,8 +1,8 @@
 # sustAIn
 
-sustAIn helps people understand the hidden environmental cost of everyday AI use. It tracks LLM activity across ChatGPT, Claude, Gemini, and AI Studio, then turns token usage into clear impact metrics like water usage and CO₂ equivalents so users can make smarter prompting decisions in real time.
+sustAIn helps people understand the hidden environmental cost of everyday AI use. It tracks LLM activity across ChatGPT, Claude, Gemini, and AI Studio, then turns token usage into clear impact metrics like water usage and CO₂ equivalents so users can make smarter prompting decisions in real time and truly understand the impact of the toold they use everyday.
 
-Built as a hackathon project, sustAIn combines a Chrome extension, a live dashboard, and cloud-backed analytics to make AI sustainability visible, measurable, and actionable.
+Built as a hackathon project, sustAIn combines a Chrome extension that uses DOM monitoring to calculate tokens, a live dashboard to display stats, and cloud-backed analytics to make AI sustainability visible, measurable, and actionable.
 
 ## Built on Google technologies (Hackathon highlight)
 
