@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Droplets } from "lucide-react";
+import { AnimatedLogo } from "@/components/ui/animated-logo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -79,8 +80,8 @@ export default function Login() {
           <div className="mx-auto w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mb-6 text-blue-600 shadow-sm">
             <Droplets size={32} />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-slate-900">
-            Sust<span className="text-blue-500">AI</span>n
+          <CardTitle className="text-5xl font-bold tracking-tight text-slate-900 mb-2">
+            <AnimatedLogo />
           </CardTitle>
           <CardDescription className="text-base mt-2">
             Monitor the environmental impact of your AI usage
