@@ -214,6 +214,25 @@ body {
   gap: 8px;
 }
 
+.btn-clear {
+  width: 100%;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.btn-clear:hover {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
 /* Login / Sign up */
 .login-screen {
   display: flex;
