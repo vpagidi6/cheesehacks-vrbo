@@ -33,7 +33,7 @@ export function WaterUsageCard({ ml, limitMl }: WaterUsageCardProps) {
           </div>
           {limitMl > 0 && (
             <p className="text-xs text-slate-500 mt-1">
-              {Math.round((ml / limitMl) * 100)}% of {limitMl} mL limit
+              {Math.round((ml / limitMl) * 100)}% of limit
             </p>
           )}
         </div>

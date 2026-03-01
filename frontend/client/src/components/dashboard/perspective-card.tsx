@@ -38,23 +38,13 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
   const [hasAnimated, setHasAnimated] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // We can simplify this effect since the parent ScrollReveal component
+  // will remount this component every time it enters the viewport.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasAnimated) {
-          // Add a tiny delay before starting animation for better visual effect
-          setTimeout(() => setHasAnimated(true), 300);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (trackRef.current) {
-      observer.observe(trackRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasAnimated]);
+    // Add a tiny delay before starting animation for better visual effect
+    const timer = setTimeout(() => setHasAnimated(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Determine text to show inside track
   const steps = Math.round(milesDriven * 2000);
@@ -65,7 +55,7 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
   const animName = useMemo(() => `drive-${Math.random().toString(36).substr(2, 9)}`, []);
 
   return (
-    <Card className="shadow-sm border-slate-200 overflow-hidden">
+    <Card className="shadow-sm border-slate-200 overflow-hidden h-full">
       <CardHeader className="pb-3 border-b border-slate-100 bg-white">
         <div className="flex justify-between items-start">
           <div>
@@ -124,13 +114,18 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
           </div>
 
           {/* Miles Section */}
-          <div className="p-6 bg-slate-50 flex flex-col justify-center items-center min-h-[160px] relative overflow-hidden">
+          <div className="p-6 bg-slate-50 flex flex-col justify-center min-h-[160px] relative overflow-hidden">
+            <div className="flex items-center gap-2 text-slate-600 mb-3">
+              <Car size={18} />
+              <span className="text-sm font-semibold uppercase tracking-wider">Distance Equivalence</span>
+            </div>
             
-            {/* The Oval Track */}
-            <div 
-              ref={trackRef}
-              className="relative w-[280px] h-[100px] border-[3px] border-dashed border-slate-300 rounded-[50px] flex items-center justify-center bg-white/50"
-            >
+            <div className="w-full flex flex-col items-center mt-2">
+              {/* The Oval Track */}
+              <div 
+                ref={trackRef}
+                className="relative w-[280px] h-[100px] border-[3px] border-dashed border-slate-300 rounded-[50px] flex items-center justify-center bg-white/50 mb-2"
+              >
               {/* Inner Text */}
               <div className="text-center z-10 px-4 py-2 bg-slate-50/90 backdrop-blur-sm rounded-full shadow-sm border border-slate-100">
                 {showDrivingTime ? (
@@ -187,9 +182,15 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
               >
                 <Car size={16} className="fill-slate-700 relative" />
               </div>
-
             </div>
 
+            <div className="text-center mt-4 text-slate-500 font-medium">
+              <span className="text-lg font-bold text-slate-700">
+                ≈ {milesDriven.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+              </span>
+              <span className="text-sm ml-1">miles driven</span>
+            </div>
+          </div>
           </div>
 
         </div>
