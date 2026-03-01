@@ -7,7 +7,8 @@ import { AlertCircle, RefreshCcw, Droplet, Zap } from "lucide-react";
 import { ProgressBar } from "@/components/dashboard/progress-bar";
 import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown";
 import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
-import { InteractiveWater } from "@/components/dashboard/interactive-water";
+import { WaterUsageCard } from "@/components/dashboard/water-usage-card";
+import { CO2EmissionsCard } from "@/components/dashboard/co2-emissions-card";
 
 export default function Dashboard() {
   const now = new Date();
@@ -55,74 +56,53 @@ export default function Dashboard() {
 
         {data && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {/* Today Card */}
-            <Card className="lg:col-span-2 shadow-sm border-slate-200 relative overflow-hidden">
-              <InteractiveWater 
-                percentage={Math.min(100, Math.max(0, (data.today.ml / data.dailyLimitMl) * 100))} 
-                isWarning={data.today.ml >= data.dailyLimitMl}
-              />
+            {/* Unified Usage Card */}
+            <Card className="lg:col-span-2 shadow-sm border-slate-200 overflow-hidden flex flex-col">
+              <CardHeader className="pb-4 border-b border-slate-100 z-10 bg-white">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  Today's Usage
+                  <span className="text-xs font-medium bg-blue-50/80 backdrop-blur text-blue-700 px-2.5 py-1 rounded-full ml-auto">
+                    Mode: <span className="capitalize">{data.estimationMode}</span>
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  {data.totalCO2 != null || data.equivalence != null
+                    ? "All-time totals from your connected accounts"
+                    : "Real-time estimation based on prompt size"}
+                </CardDescription>
+              </CardHeader>
               
-              <div className="relative z-10">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    Today's Usage
-                    <span className="text-xs font-medium bg-blue-50/80 backdrop-blur text-blue-700 px-2.5 py-1 rounded-full ml-auto">
-                      Mode: <span className="capitalize">{data.estimationMode}</span>
-                    </span>
-                  </CardTitle>
-                  <CardDescription>
-                    {data.totalCO2 != null || data.equivalence != null
-                      ? "All-time totals from your connected accounts"
-                      : "Real-time estimation based on prompt size"}
-                    {data.dailyLimitMl > 0 && (
-                      <span className="ml-2 font-medium text-slate-700">
-                        ({Math.round((data.today.ml / data.dailyLimitMl) * 100)}% of limit)
-                      </span>
-                    )}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-2 gap-6 mb-8">
-                    <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-white/60 backdrop-blur text-blue-600 rounded-xl shadow-sm border border-slate-100/50">
-                        <Droplet size={28} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 uppercase tracking-wider">
-                          {data.totalWater != null ? "Water (est.)" : "Water Consumed"}
-                        </p>
-                        <h4 className="text-4xl font-bold tracking-tight text-slate-900 mt-1">
-                          {data.totalWater ?? `${data.today.ml.toLocaleString()} / ${data.dailyLimitMl.toLocaleString()} mL`}
-                        </h4>
-                      </div>
+              <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 flex-grow">
+                {/* Left Side: Water Card */}
+                <div className="flex-1">
+                  <WaterUsageCard 
+                    ml={data.today.ml} 
+                    limitMl={data.dailyLimitMl} 
+                  />
+                  {data.today.ml >= data.dailyLimitMl && (
+                    <div className="mt-4 p-3 bg-red-50/90 backdrop-blur text-red-800 text-sm rounded-xl flex items-start gap-2 border border-red-100 shadow-sm">
+                      <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-600" />
+                      <p className="font-medium"><strong>Warning:</strong> Exceeded daily water limit of {data.dailyLimitMl} mL.</p>
                     </div>
-                    <div className="flex items-start space-x-4">
-                      <div className="p-3 bg-white/60 backdrop-blur text-amber-500 rounded-xl shadow-sm border border-slate-100/50">
-                        <Zap size={28} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 uppercase tracking-wider">Tokens Processed</p>
-                        <h4 className="text-4xl font-bold tracking-tight text-slate-900 mt-1">
-                          {data.today.tokens.toLocaleString()}
-                        </h4>
-                        {data.totalCO2 != null && (
-                          <p className="text-sm text-slate-500 mt-1">
-                            CO₂: {data.totalCO2} · {data.equivalence}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  )}
+                </div>
 
-                  <div className="space-y-4">
-                    {data.today.ml >= data.dailyLimitMl && (
-                      <div className="p-4 bg-red-50/90 backdrop-blur text-red-800 text-sm rounded-xl flex items-start gap-3 border border-red-100 shadow-sm animate-in slide-in-from-bottom-2">
-                        <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-red-600" />
-                        <p className="font-medium"><strong>Warning:</strong> You have exceeded your daily water limit of {data.dailyLimitMl} mL. Consider optimizing your prompts.</p>
-                      </div>
+                {/* Right Side: CO2 Card */}
+                <div className="flex-1 flex flex-col">
+                  <CO2EmissionsCard 
+                    co2Grams={data.today.tokens * 0.05} // Example mapping: 0.05g per token
+                    co2Limit={data.dailyLimitMl * 0.05} // Use same relative scale
+                  />
+                  <div className="mt-4 flex items-center justify-between px-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-1.5">
+                      <Zap size={14} className="text-amber-500" />
+                      <span>{data.today.tokens.toLocaleString()} tokens</span>
+                    </div>
+                    {data.equivalence && (
+                      <span className="truncate ml-2 text-right">{data.equivalence}</span>
                     )}
                   </div>
-                </CardContent>
+                </div>
               </div>
             </Card>
 

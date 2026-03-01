@@ -206,7 +206,7 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
   return (
     <div 
       ref={containerRef}
-      className={`absolute inset-0 z-0 pointer-events-none overflow-hidden ${baseColor}`}
+      className={`absolute inset-0 z-0 pointer-events-auto overflow-hidden ${baseColor}`}
     >
       <svg className="w-full h-full block">
         {/* Background wave (slower, phase shifted) */}
