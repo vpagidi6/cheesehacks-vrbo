@@ -1,6 +1,6 @@
 # sustAIn read-only backend
 
-Reads usage stats for a specified account from Firestore and returns them via REST.
+Reads usage stats for the authenticated Firebase user from Firestore and returns them via REST.
 
 ## Local setup
 
@@ -10,66 +10,125 @@ Reads usage stats for a specified account from Firestore and returns them via RE
 
 Server listens on **http://localhost:3000**.
 
-## Deploy on GCP Compute Engine
+## Deploy on Cloud Run (hackathon flow)
 
-1. **Create a VM**
-   - Machine type: e2-micro or e2-small
-   - Boot disk: Ubuntu 22.04
-   - Allow HTTP/HTTPS traffic (for load balancer or direct access)
+### 1) Install and verify `gcloud`
 
-2. **Attach a service account** with Firestore Data Viewer (or Cloud Datastore User). Create one if needed and grant it access to your Firestore database.
+Install: https://cloud.google.com/sdk/docs/install
 
-3. **SSH into the VM** and run:
+```bash
+gcloud --version
+```
 
-   ```bash
-   sudo apt update && sudo apt install -y python3 python3-pip python3-venv
-   git clone <your-repo> app && cd app/firebase-backend
-   python3 -m venv venv && source venv/bin/activate
-   pip install -r requirements.txt
-   export PORT=8080
-   gunicorn -b 0.0.0.0:$PORT -w 1 app:app
-   ```
+### 2) Authenticate and select your Firebase project
 
-4. **Run as a service** (optional): create `/etc/systemd/system/sustain-api.service`:
+```bash
+gcloud auth login
+gcloud init
+gcloud config get-value project
+```
 
-   ```ini
-   [Unit]
-   Description=sustAIn backend API
-   After=network.target
+Use the same Google account and GCP project as your Firebase project.
 
-   [Service]
-   User=YOUR_USER
-   WorkingDirectory=/path/to/firebase-backend
-   Environment="PORT=8080"
-   ExecStart=/path/to/firebase-backend/venv/bin/gunicorn -b 0.0.0.0:8080 -w 1 app:app
-   Restart=always
+### 3) Enable required APIs
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+```bash
+gcloud services enable run.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable firestore.googleapis.com
+```
 
-   Then: `sudo systemctl daemon-reload && sudo systemctl enable sustain-api && sudo systemctl start sustain-api`
+### 4) Confirm backend files
 
-On GCP, credentials come from the VM's attached service account (Application Default Credentials). No `serviceAccountKey.json` needed.
+This folder must contain:
+- `app.py`
+- `requirements.txt`
+
+`requirements.txt`:
+
+```txt
+flask==2.3.3
+flask-cors==4.0.0
+firebase-admin==6.5.0
+python-dotenv==1.0.1
+gunicorn==21.2.0
+```
+
+In `app.py`, Flask app must be initialized as:
+
+```python
+app = Flask(__name__)
+```
+
+### 5) Deploy to Cloud Run (no Dockerfile)
+
+From `firebase-backend/`:
+
+```bash
+gcloud run deploy eco-backend --source . --region us-central1 --allow-unauthenticated
+```
+
+When prompted:
+- Platform: Cloud Run
+- Region: `us-central1`
+- Allow unauthenticated: `Yes`
+
+Save the deployed URL, e.g.:
+`https://eco-backend-xxxxx-uc.a.run.app`
+
+### 6) Grant Firestore permissions
+
+In Google Cloud Console IAM, grant your Cloud Run runtime service account the role:
+- `Cloud Datastore User`
+
+For hackathon setups this is commonly the Compute Engine default service account, unless you configured a custom Cloud Run service account.
+
+Do not use `serviceAccountKey.json` in production.
+
+### 7) Test API
+
+```bash
+curl https://YOUR_CLOUD_RUN_URL/users/me/stats
+```
+
+Expected:
+- `401` without Firebase token
+- Valid JSON with a Firebase ID token in `Authorization: Bearer <token>`
+
+### 8) Connect frontend
+
+```ts
+const token = await firebase.auth().currentUser.getIdToken();
+
+const res = await fetch("https://YOUR_URL/users/me/stats", {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
+
+const data = await res.json();
+```
 
 ## API
 
-### GET `/users/<uid>/stats`
+### GET `/users/me/stats`
 
-Reads `totalTokens` and `totalByProvider` from Firestore, computes CO2, water, and equivalence stats, and returns enriched data for the frontend.
+Reads `totalTokens` and `totalByProvider` from Firestore for the authenticated Firebase user, computes CO2/water/equivalence stats, and returns enriched data for the frontend.
 
-**Example:** `curl http://localhost:3000/users/abc123/stats`
+**Example:**
+
+```bash
+curl http://localhost:3000/users/me/stats \
+   -H "Authorization: Bearer <firebase-id-token>"
+```
 
 **Response:**
 ```json
 {
   "totalTokens": 1500,
   "totalByProvider": { "chatgpt": 800, "claude": 700 },
-  "updatedAt": "2025-02-28T...",
-  "totalCO2_grams": 15,
-  "totalCO2_formatted": "15 g",
-  "totalWater_liters": 0.75,
-  "totalWater_formatted": "750 mL",
+   "totalCO2": "15 g",
+   "totalWater": "750 mL",
   "equivalence": "~0.04 mi driven"
 }
 ```
