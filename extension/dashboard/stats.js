@@ -20440,7 +20440,7 @@ This typically indicates that your device does not have a healthy Internet conne
       return `~${(treeYears * 365).toFixed(0)} days to offset`;
     return `~${miles.toFixed(1)} mi driven`;
   }
-  function render(totals, events, localHistory) {
+  function render(totals) {
     const totalTokens = totals?.totalTokens ?? 0;
     const totalCO2 = totalTokens * GRAM_CO2_PER_TOKEN;
     const totalEl = document.getElementById("total-tokens");
@@ -20450,11 +20450,6 @@ This typically indicates that your device does not have a healthy Internet conne
     if (co2El) co2El.textContent = formatCO2(totalCO2);
     if (equivEl) equivEl.textContent = getEquivalence(totalCO2);
     const byProvider = { ...totals?.totalByProvider || {} };
-    (localHistory || []).forEach((h) => {
-      const p = (h.provider || "unknown").trim().toLowerCase();
-      if (!byProvider[p]) byProvider[p] = 0;
-      byProvider[p] += h.totalTokens || 0;
-    });
     const providerGrid = document.getElementById("provider-grid");
     if (providerGrid) {
       providerGrid.innerHTML = "";
@@ -20470,36 +20465,6 @@ This typically indicates that your device does not have a healthy Internet conne
       `;
         providerGrid.appendChild(row);
       }
-    }
-    const historyList = document.getElementById("history-list");
-    if (!historyList) return;
-    historyList.innerHTML = "";
-    const combined = [
-      ...(events || []).map((e) => ({
-        provider: e.provider,
-        totalTokens: e.totalTokens,
-        timestamp: typeof e.timestamp === "number" && e.timestamp || e.timestamp?.toMillis && e.timestamp.toMillis() || e.createdAt?.toMillis && e.createdAt.toMillis() || 0
-      })),
-      ...(localHistory || []).map((h) => ({
-        provider: h.provider,
-        totalTokens: h.totalTokens,
-        timestamp: h.timestamp || 0
-      }))
-    ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    const recent = combined.slice(0, 20);
-    if (recent.length === 0) {
-      historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT, Claude, or Gemini \u2013 tokens are estimated from text.</div>`;
-    } else {
-      recent.forEach((h) => {
-        const item = document.createElement("div");
-        item.className = "history-item";
-        const time = new Date(h.timestamp).toLocaleString();
-        item.innerHTML = `
-        <span class="history-provider">${h.provider || "?"}</span>
-        <span class="history-details">${formatNumber(h.totalTokens || 0)} tokens \xB7 ${time}</span>
-      `;
-        historyList.appendChild(item);
-      });
     }
   }
   async function syncPendingToFirestore(user) {
@@ -20546,7 +20511,6 @@ This typically indicates that your device does not have a healthy Internet conne
     const emailEl = document.getElementById("user-email");
     if (emailEl) emailEl.textContent = user.email || "";
     let totals = { totalTokens: 0, totalByProvider: {} };
-    let events = [];
     try {
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (userSnap.exists()) totals = userSnap.data();
@@ -20554,12 +20518,17 @@ This typically indicates that your device does not have a healthy Internet conne
     }
     return new Promise((resolve) => {
       if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(["usageHistory"], (r) => {
-          render(totals, events, r.usageHistory || []);
+        chrome.storage.local.get(["pendingFirestore"], (r) => {
+          const pending = r.pendingFirestore || [];
+          if (pending.length > 0) {
+            syncPendingToFirestore(user).then(() => loadDashboard(user).then(resolve));
+            return;
+          }
+          render(totals);
           resolve();
         });
       } else {
-        render(totals, events, []);
+        render(totals);
         resolve();
       }
     });
@@ -20584,17 +20553,16 @@ This typically indicates that your device does not have a healthy Internet conne
     if (!confirm("Clear local usage data? (Cloud data is kept.)")) return;
     if (typeof chrome === "undefined" || !chrome.storage?.local) return;
     const user = auth.currentUser;
-    chrome.storage.local.set({ usageHistory: [], pendingFirestore: [] });
+    chrome.storage.local.set({ pendingFirestore: [] });
     if (user) {
       await loadDashboard(user);
     } else {
-      render({ totalTokens: 0, totalByProvider: {} }, [], []);
+      render({ totalTokens: 0, totalByProvider: {} });
     }
   });
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== "local") return;
-      if (changes.usageHistory && auth.currentUser) loadDashboard(auth.currentUser);
       if (changes.pendingFirestore && auth.currentUser) {
         const pending = changes.pendingFirestore.newValue || [];
         if (pending.length > 0) syncPendingToFirestore(auth.currentUser).then(() => loadDashboard(auth.currentUser));

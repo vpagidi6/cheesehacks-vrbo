@@ -56,12 +56,20 @@
   var lastSentKey = null;
   var lastSentTime = 0;
   var DEDUPE_MS = 3000;
+  var processedContentMap = new WeakMap();
+  var wasTabHidden = false;
+  var pendingWhileHidden = new Set();
 
-  function handleAssistantMessage(node, config) {
-    if (node.dataset && node.dataset.aiTokenProcessed === "true") return;
-
+  function handleAssistantMessage(node, config, forceRecheck) {
     var text = getText(node);
     if (!text || text.length < 10) return;
+
+    var previousContent = processedContentMap.get(node);
+    var contentLength = text.length;
+
+    if (!forceRecheck && node.dataset && node.dataset.aiTokenProcessed === "true") {
+      if (previousContent === contentLength) return;
+    }
 
     var outputTokens = estimateTokens(text);
     var inputText = getLastUserMessageText(config);
@@ -88,57 +96,39 @@
     } catch (_) {}
 
     if (node.dataset) node.dataset.aiTokenProcessed = "true";
+    processedContentMap.set(node, contentLength);
   }
 
   function waitForStability(node, config, callback) {
     var lastLength = getText(node).length;
     var stableCount = 0;
-    var interval = setInterval(function () {
+    var maxWaitTime = 60000;
+    var startTime = Date.now();
+    var checkInterval = document.hidden ? 1000 : 200;
+
+    function check() {
+      if (Date.now() - startTime > maxWaitTime) {
+        callback(node, config);
+        return;
+      }
+
       var currentLength = getText(node).length;
-      if (currentLength === lastLength) {
+      if (currentLength === lastLength && currentLength > 0) {
         stableCount++;
       } else {
         stableCount = 0;
         lastLength = currentLength;
       }
-      if (stableCount >= 5) {
-        clearInterval(interval);
+
+      var requiredStableChecks = document.hidden ? 3 : 5;
+      if (stableCount >= requiredStableChecks) {
         callback(node, config);
+      } else {
+        checkInterval = document.hidden ? 1000 : 200;
+        setTimeout(check, checkInterval);
       }
-    }, 200);
-  }
-
-  function findAssistantNodes(root, selector) {
-    var selectors = selector.split(",").map(function (s) { return s.trim(); });
-    var out = [];
-    function collect(el) {
-      if (!el || el.nodeType !== 1) return;
-      for (var i = 0; i < selectors.length; i++) {
-        try {
-          if (el.matches && el.matches(selectors[i])) {
-            out.push(el);
-            return;
-          }
-        } catch (_) {}
-      }
-      for (var j = 0; j < el.children.length; j++) collect(el.children[j]);
     }
-    for (var i = 0; i < selectors.length; i++) {
-      try {
-        var list = root.querySelectorAll(selectors[i]);
-        for (var k = 0; k < list.length; k++) out.push(list[k]);
-      } catch (_) {}
-    }
-    return out;
-  }
-
-  function isInAddedTree(node, addedNode) {
-    var p = node;
-    while (p) {
-      if (p === addedNode) return true;
-      p = p.parentElement;
-    }
-    return false;
+    setTimeout(check, checkInterval);
   }
 
   function run(config) {
@@ -154,11 +144,13 @@
       return false;
     }
 
-    function processCandidate(el) {
+    function processCandidate(el, forceRecheck) {
       if (!el || el.nodeType !== 1) return;
-      if (el.dataset && el.dataset.aiTokenProcessed === "true") return;
-      if (watching.has(el)) return;
-      if (hasProcessedOrWatchedAncestor(el)) return;
+      if (!forceRecheck) {
+        if (el.dataset && el.dataset.aiTokenProcessed === "true") return;
+        if (watching.has(el)) return;
+        if (hasProcessedOrWatchedAncestor(el)) return;
+      }
       var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
       var matches = false;
       for (var p = 0; p < parts.length; p++) {
@@ -173,14 +165,23 @@
         if (inner && inner !== el) return;
       }
 
+      if (forceRecheck) {
+        handleAssistantMessage(el, config, true);
+        return;
+      }
+
       watching.add(el);
+      if (document.hidden) {
+        pendingWhileHidden.add(el);
+      }
       waitForStability(el, config, function (node, cfg) {
         watching.delete(node);
-        handleAssistantMessage(node, cfg);
+        pendingWhileHidden.delete(node);
+        handleAssistantMessage(node, cfg, false);
       });
     }
 
-    function processExistingAssistantMessages() {
+    function processExistingAssistantMessages(forceRecheck) {
       var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
       for (var i = 0; i < parts.length; i++) {
         var nodes = [];
@@ -189,8 +190,24 @@
         } catch (_) {
           continue;
         }
-        for (var j = 0; j < nodes.length; j++) processCandidate(nodes[j]);
+        for (var j = 0; j < nodes.length; j++) processCandidate(nodes[j], forceRecheck);
       }
+    }
+
+    function onTabBecameVisible() {
+      pendingWhileHidden.forEach(function (el) {
+        if (!watching.has(el)) {
+          processCandidate(el, true);
+        }
+      });
+      pendingWhileHidden.clear();
+
+      if (wasTabHidden) {
+        processExistingAssistantMessages(true);
+      } else {
+        processExistingAssistantMessages(false);
+      }
+      wasTabHidden = false;
     }
 
     var observer = new MutationObserver(function (mutations) {
@@ -198,13 +215,13 @@
         for (var i = 0; i < mutation.addedNodes.length; i++) {
           var node = mutation.addedNodes[i];
           if (!node || node.nodeType !== 1) continue;
-          processCandidate(node);
+          processCandidate(node, false);
           if (node.querySelectorAll) {
             try {
               var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
               for (var p = 0; p < parts.length; p++) {
                 var list = node.querySelectorAll(parts[p]);
-                for (var k = 0; k < list.length; k++) processCandidate(list[k]);
+                for (var k = 0; k < list.length; k++) processCandidate(list[k], false);
               }
             } catch (_) {}
           }
@@ -214,7 +231,7 @@
 
     function startObserving() {
       observer.observe(document.body, { childList: true, subtree: true });
-      processExistingAssistantMessages();
+      processExistingAssistantMessages(false);
     }
     if (config.provider === "claude" || config.provider === "gemini") {
       setTimeout(startObserving, 500);
@@ -223,22 +240,45 @@
     }
 
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible") {
-        processExistingAssistantMessages();
+      if (document.visibilityState === "hidden") {
+        wasTabHidden = true;
+      } else if (document.visibilityState === "visible") {
+        setTimeout(onTabBecameVisible, 100);
       }
     });
 
     window.addEventListener("focus", function () {
-      processExistingAssistantMessages();
+      setTimeout(onTabBecameVisible, 100);
     });
 
-    try {
-      chrome.runtime.onMessage.addListener(function (msg) {
-        if (msg && msg.type === "TAB_ACTIVATED") {
-          processExistingAssistantMessages();
-        }
-      });
-    } catch (_) {}
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        setTimeout(onTabBecameVisible, 100);
+      }
+    });
+
+    function setupMessageListener() {
+      try {
+        chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) {
+          if (msg && msg.type === "TAB_ACTIVATED") {
+            setTimeout(onTabBecameVisible, 50);
+          }
+          if (msg && msg.type === "PING") {
+            sendResponse({ pong: true });
+            return true;
+          }
+        });
+      } catch (e) {
+        setTimeout(setupMessageListener, 1000);
+      }
+    }
+    setupMessageListener();
+
+    setInterval(function () {
+      if (document.visibilityState === "visible" && !document.hidden) {
+        processExistingAssistantMessages(false);
+      }
+    }, 5000);
   }
 
   var config = getConfig();

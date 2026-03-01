@@ -1,4 +1,3 @@
-// No Firebase in the service worker — sync to Firestore when popup/stats page opens
 let processQueue = Promise.resolve();
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -14,7 +13,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         chrome.storage.local.get(
           ["firebaseUid", "pendingFirestore"],
           (r) => {
-            const uid = r.firebaseUid;
             const totalTokens =
               Number(payload.totalTokens) ||
               Number(payload.inputTokens) + Number(payload.outputTokens) ||
@@ -49,6 +47,44 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true;
 });
 
+const LLM_URL_PATTERNS = [
+  "chatgpt.com",
+  "chat.openai.com",
+  "claude.ai",
+  "gemini.google.com",
+  "aistudio.google.com"
+];
+
+function isLLMTab(url) {
+  if (!url) return false;
+  return LLM_URL_PATTERNS.some(pattern => url.includes(pattern));
+}
+
+function notifyTabActivated(tabId, retries = 3) {
+  chrome.tabs.sendMessage(tabId, { type: "TAB_ACTIVATED" })
+    .then(() => {})
+    .catch(() => {
+      if (retries > 0) {
+        setTimeout(() => notifyTabActivated(tabId, retries - 1), 200);
+      }
+    });
+}
+
 chrome.tabs.onActivated.addListener((activeInfo) => {
-  chrome.tabs.sendMessage(activeInfo.tabId, { type: "TAB_ACTIVATED" }).catch(() => {});
+  chrome.tabs.get(activeInfo.tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+    if (tab && isLLMTab(tab.url)) {
+      notifyTabActivated(activeInfo.tabId);
+    }
+  });
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) return;
+  chrome.tabs.query({ active: true, windowId: windowId }, (tabs) => {
+    if (chrome.runtime.lastError) return;
+    if (tabs && tabs[0] && isLLMTab(tabs[0].url)) {
+      notifyTabActivated(tabs[0].id);
+    }
+  });
 });
