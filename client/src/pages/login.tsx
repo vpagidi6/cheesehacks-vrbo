@@ -80,7 +80,7 @@ export default function Login() {
             <Droplets size={32} />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight text-slate-900">
-            WaterWise AI
+            Sust<span className="text-blue-500">AI</span>n
           </CardTitle>
           <CardDescription className="text-base mt-2">
             Monitor the environmental impact of your AI usage
