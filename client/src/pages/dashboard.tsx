@@ -25,7 +25,6 @@ export default function Dashboard() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-slate-500 mt-1">Overview of your AI water consumption for {currentMonth}</p>
         </div>
 
         {isLoading && (
