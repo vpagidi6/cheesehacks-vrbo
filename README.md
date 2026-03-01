@@ -84,4 +84,11 @@ CO₂ equivalence strings (feet/miles driven, days to offset) are derived from b
 
 ## Quick start
 
-🚀 [Open the live demo](https://cheesehacks-vrbo.vercel.app/login)
+🚀 [Open the live demo of dashboard](https://cheesehacks-vrbo.vercel.app/login)
+- To test the extension:
+  1. Clone the repo
+  2. Navigate to chrome://extensions in the search bar of Chrome
+  3. Turn on developer mode, click load unpacked, and upload the extension folder of the repo
+  4. Create an account on the extension and scroll down on it after signing in
+  5. Go to Claude, ChatGPT, or Gemini's website and hit Ctrl-Shift-R (Windows) or Cmd-Shift-R (Mac)
+  6. Start prompting and watch the tokens be tracked!
