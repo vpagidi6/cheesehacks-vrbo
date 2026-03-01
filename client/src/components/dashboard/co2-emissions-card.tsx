@@ -83,31 +83,22 @@ export function CO2EmissionsCard({ co2Grams, co2Limit }: CO2EmissionsCardProps) 
       </div>
 
       {/* Ground/City/Factory Silhouette */}
-      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-slate-800 z-30 flex items-end">
-        {/* Abstract city shapes */}
-        <div className="absolute bottom-0 left-4 w-12 h-24 bg-slate-900 rounded-t-sm" />
-        <div className="absolute bottom-0 left-20 w-16 h-16 bg-slate-700 rounded-t-sm" />
-        <div className="absolute bottom-0 right-8 w-20 h-32 bg-slate-900 rounded-t-sm" />
-        
-        {/* Main Factory Container */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-20 bg-slate-800 rounded-t-lg border-t border-slate-700 flex items-end justify-center pb-2 z-40">
-          <Factory className="text-slate-500 mb-2" size={32} />
+      <div className="absolute bottom-0 left-0 w-full h-2 bg-slate-800 z-30"></div>
+      
+      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-30 flex justify-center items-end">
+        {/* Single Factory Building */}
+        <div className="relative w-28 h-16 bg-slate-800 rounded-t-lg border-t border-slate-700 flex items-end justify-center pb-2 z-40 shadow-lg">
+          <Factory className="text-slate-500 mb-1" size={24} />
           
-          {/* Smokestacks */}
-          <div className="absolute -top-16 left-6 w-4 h-16 bg-slate-700 rounded-t-sm" />
-          <div className="absolute -top-24 right-12 w-6 h-24 bg-slate-700 rounded-t-sm" />
-          <div className="absolute -top-12 right-4 w-3 h-12 bg-slate-700 rounded-t-sm" />
+          {/* Single Smokestack */}
+          <div className="absolute -top-14 right-6 w-4 h-14 bg-slate-700 rounded-t-sm" />
 
           {/* Animated Smoke Particles */}
-          <div className="absolute -top-16 left-6 w-4 h-4 z-50">
+          <div className="absolute -top-14 right-6 w-4 h-4 z-50">
             <div className="absolute w-8 h-8 bg-slate-400 rounded-full blur-md animate-[smoke_3s_ease-out_infinite]" style={{ opacity: smokeIntensity, animationDelay: '0s' }} />
             <div className="absolute w-12 h-12 bg-slate-500 rounded-full blur-md animate-[smoke_4s_ease-out_infinite]" style={{ opacity: smokeIntensity * 0.8, animationDelay: '1.2s' }} />
-          </div>
-          
-          <div className="absolute -top-24 right-12 w-6 h-4 z-50">
-            <div className="absolute w-16 h-16 bg-slate-400 rounded-full blur-lg animate-[smoke_4s_ease-out_infinite]" style={{ opacity: smokeIntensity, animationDelay: '0.5s' }} />
-            <div className="absolute w-20 h-20 bg-slate-600 rounded-full blur-xl animate-[smoke_5s_ease-out_infinite]" style={{ opacity: smokeIntensity * 0.9, animationDelay: '2.1s' }} />
-            <div className="absolute w-24 h-24 bg-slate-500 rounded-full blur-xl animate-[smoke_4.5s_ease-out_infinite]" style={{ opacity: smokeIntensity * 0.7, animationDelay: '3.5s' }} />
+            <div className="absolute w-16 h-16 bg-slate-600 rounded-full blur-lg animate-[smoke_5s_ease-out_infinite]" style={{ opacity: smokeIntensity * 0.9, animationDelay: '2.1s' }} />
+            <div className="absolute w-20 h-20 bg-slate-500 rounded-full blur-xl animate-[smoke_4.5s_ease-out_infinite]" style={{ opacity: smokeIntensity * 0.7, animationDelay: '3.5s' }} />
           </div>
         </div>
       </div>

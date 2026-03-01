@@ -70,6 +70,18 @@ export default function Dashboard() {
                     ? "All-time totals from your connected accounts"
                     : "Real-time estimation based on prompt size"}
                 </CardDescription>
+                
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-50">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700 bg-amber-50 px-2.5 py-1 rounded-md">
+                    <Zap size={16} className="text-amber-500" />
+                    <span>{data.today.tokens.toLocaleString()} tokens processed</span>
+                  </div>
+                  {data.equivalence && (
+                    <div className="flex items-center gap-1.5 text-sm text-slate-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100/50">
+                      <span>{data.equivalence}</span>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               
               <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 flex-grow">
@@ -88,20 +100,11 @@ export default function Dashboard() {
                 </div>
 
                 {/* Right Side: CO2 Card */}
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1">
                   <CO2EmissionsCard 
                     co2Grams={data.today.tokens * 0.05} // Example mapping: 0.05g per token
                     co2Limit={data.dailyLimitMl * 0.05} // Use same relative scale
                   />
-                  <div className="mt-4 flex items-center justify-between px-2 text-sm text-slate-500">
-                    <div className="flex items-center gap-1.5">
-                      <Zap size={14} className="text-amber-500" />
-                      <span>{data.today.tokens.toLocaleString()} tokens</span>
-                    </div>
-                    {data.equivalence && (
-                      <span className="truncate ml-2 text-right">{data.equivalence}</span>
-                    )}
-                  </div>
                 </div>
               </div>
             </Card>
