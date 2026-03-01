@@ -42,7 +42,7 @@ export default function Settings() {
     onError: (error) => {
       toast({
         title: "Error Saving Settings",
-        description: (error as Error).message + " (Make sure your backend is running!)",
+        description: (error as Error).message,
         variant: "destructive",
       });
     }
