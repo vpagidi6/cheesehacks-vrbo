@@ -86,6 +86,14 @@ def _format_water(liters):
         return f"{liters * 1000:.0f} mL"
     return f"{liters:.2f} L"
 
+@app.route("/", methods=["GET"])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "service": "eco-backend",
+        "firestore_connected": True
+    }), 200
+
 
 def _compute_stats(total_tokens):
     """Compute CO2, water, and equivalence from token count."""
