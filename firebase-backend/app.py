@@ -16,7 +16,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials, firestore, auth
+from flask import request
 
 load_dotenv()
 
@@ -100,15 +101,22 @@ def _compute_stats(total_tokens):
     }
 
 
-@app.route("/users/<uid>/stats")
-def get_user_stats(uid):
-    """Read totalTokens and totalByProvider from DB; compute and return stats."""
+@app.route("/users/me/stats")
+def get_user_stats():
     try:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Missing Authorization header"}), 401
+
+        id_token = auth_header.split("Bearer ")[-1]
+        decoded = auth.verify_id_token(id_token)
+        uid = decoded["uid"]
+
         user_ref = db.collection("users").document(uid)
         user_snap = user_ref.get()
 
         totals = {"totalTokens": 0, "totalByProvider": {}}
-        if user_snap.exists():
+        if user_snap.exists:
             totals = user_snap.to_dict()
 
         total_tokens = totals.get("totalTokens", 0) or 0
@@ -116,20 +124,16 @@ def get_user_stats(uid):
 
         stats = _compute_stats(total_tokens)
 
-        out = {
+        return jsonify({
             "totalTokens": total_tokens,
             "totalByProvider": total_by_provider,
-            "updatedAt": totals.get("updatedAt"),
-            "totalCO2_grams": stats["totalCO2_grams"],
-            "totalCO2_formatted": stats["totalCO2_formatted"],
-            "totalWater_liters": stats["totalWater_liters"],
-            "totalWater_formatted": stats["totalWater_formatted"],
+            "totalCO2": stats["totalCO2_formatted"],
+            "totalWater": stats["totalWater_formatted"],
             "equivalence": stats["equivalence"],
-        }
-        return jsonify(_to_json_safe(out))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        })
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 401
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT)
