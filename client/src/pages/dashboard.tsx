@@ -115,6 +115,7 @@ export default function Dashboard() {
               <PerspectiveCard 
                 waterLiters={data.today.ml / 1000} // Convert mL to Liters
                 milesDrivenString={data.equivalence}
+                dailyLimitMl={data.dailyLimitMl}
               />
             </div>
 
