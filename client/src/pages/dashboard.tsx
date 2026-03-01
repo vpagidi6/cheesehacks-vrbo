@@ -7,6 +7,7 @@ import { AlertCircle, RefreshCcw, Droplet, Zap } from "lucide-react";
 import { ProgressBar } from "@/components/dashboard/progress-bar";
 import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown";
 import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
+import { InteractiveWater } from "@/components/dashboard/interactive-water";
 
 export default function Dashboard() {
   const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -55,14 +56,10 @@ export default function Dashboard() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {/* Today Card */}
             <Card className="lg:col-span-2 shadow-sm border-slate-200 relative overflow-hidden">
-              {/* Water tank fill effect */}
-              <div 
-                className={`absolute bottom-0 left-0 right-0 w-full transition-all duration-1000 ease-in-out z-0 opacity-15 ${data.today.ml >= data.dailyLimitMl ? 'bg-red-500' : 'bg-blue-500'}`}
-                style={{ height: `${Math.min(100, Math.max(0, (data.today.ml / data.dailyLimitMl) * 100))}%` }}
-              >
-                {/* Subtle top edge for the water */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-b from-black/5 to-transparent" />
-              </div>
+              <InteractiveWater 
+                percentage={Math.min(100, Math.max(0, (data.today.ml / data.dailyLimitMl) * 100))} 
+                isWarning={data.today.ml >= data.dailyLimitMl}
+              />
               
               <div className="relative z-10">
                 <CardHeader className="pb-4">
