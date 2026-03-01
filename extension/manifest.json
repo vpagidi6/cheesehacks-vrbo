@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "sustAIn",
+  "name": "SustAIn",
   "version": "1.0.0",
   "description": "Track your LLM token usage and environmental impact",
   "permissions": [
@@ -35,6 +35,6 @@
   },
   "action": {
     "default_popup": "dashboard/popup.html",
-    "default_title": "sustAIn"
+    "default_title": "SustAIn"
   }
 }

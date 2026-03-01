@@ -9,25 +9,25 @@
 }
 
 :root {
-  --bg: #0f1419;
-  --bg-card: #1a2332;
-  --bg-card-hover: #212d3f;
-  --text: #e6edf3;
-  --text-muted: #8b949e;
-  --accent-green: #3fb950;
-  --accent-blue: #58a6ff;
-  --accent-purple: #a371f7;
-  --accent-orange: #d29922;
-  --border: #30363d;
-  --danger: #f85149;
+  --bg: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --accent-green: #22c55e;
+  --accent-blue: #2563eb;
+  --accent-purple: #8b5cf6;
+  --accent-orange: #f59e0b;
+  --border: #e2e8f0;
+  --danger: #dc2626;
   --radius: 12px;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
 body {
   margin: 0;
   padding: 0;
-  font-family: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-width: 360px;
@@ -41,6 +41,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
 }
 
 .header {
@@ -48,15 +49,17 @@ body {
   padding-bottom: 8px;
 }
 
-.header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 190px;
+  height: 50px;
+}
+
+.logo-mark svg {
+  display: block;
+  overflow: visible;
 }
 
 .tagline {
@@ -79,11 +82,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .card:hover {
   background: var(--bg-card-hover);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
 }
 
 .card.total-tokens {
@@ -135,6 +140,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 10px 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 .provider-name {
@@ -142,6 +148,7 @@ body {
   align-items: center;
   gap: 8px;
   font-weight: 500;
+  color: #1e293b;
 }
 
 .provider-dot {
@@ -217,10 +224,10 @@ body {
 .btn-clear {
   width: 100%;
   padding: 10px 16px;
-  background: transparent;
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--text-muted);
+  color: #475569;
   font-family: inherit;
   font-size: 0.85rem;
   cursor: pointer;
@@ -228,7 +235,7 @@ body {
 }
 
 .btn-clear:hover {
-  background: rgba(248, 81, 73, 0.1);
+  background: #fef2f2;
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -255,17 +262,18 @@ body {
 .form-group label {
   font-size: 0.8rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: #334155;
 }
 
 .form-group input {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-card);
+  background: #ffffff;
   color: var(--text);
   font-family: inherit;
   font-size: 0.9rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .form-group input::placeholder {
@@ -297,7 +305,7 @@ body {
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 .btn:disabled {
@@ -306,12 +314,14 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #fff;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.28);
 }
 
 .btn-primary:hover:not(:disabled) {
-  opacity: 0.95;
+  opacity: 0.98;
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
@@ -334,7 +344,7 @@ body {
 .btn-link {
   background: none;
   border: none;
-  color: var(--accent-blue);
+  color: #2563eb;
   cursor: pointer;
   font-size: inherit;
   font-family: inherit;
@@ -343,7 +353,7 @@ body {
 }
 
 .btn-link:hover {
-  color: var(--accent-green);
+  color: #1d4ed8;
 }
 
 .header-row {
@@ -360,6 +370,7 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .user-email {
