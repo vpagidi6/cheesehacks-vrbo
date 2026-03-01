@@ -23,7 +23,12 @@ const PROVIDER_STYLES: Record<string, string> = {
 export function ProviderBreakdown({ byProvider }: { byProvider: Record<string, number> }) {
   const entries = Object.entries(byProvider).filter(([, v]) => Number(v) > 0);
   const total = entries.reduce((sum, [, v]) => sum + Number(v), 0);
-  const getPercent = (val: number) => (total > 0 ? Math.round((val / total) * 100) : 0);
+  const getPercent = (val: number) => {
+    if (total === 0) return "0";
+    const percent = (Number(val) / total) * 100;
+    if (percent > 0 && percent < 1) return "<1";
+    return Math.round(percent).toString();
+  };
 
   if (entries.length === 0) {
     return <p className="text-sm text-slate-500">No provider data yet.</p>;
