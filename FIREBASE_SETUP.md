@@ -1,142 +1,74 @@
-# Using Firebase to Track sustAIn Token Counts
+# Firebase setup (current architecture)
 
-You can use **Firebase** (Auth + Firestore) so each user has an account and their usage is stored in the cloud. The extension already has a login screen and sends usage to an API URL—you just need to point that URL at a small backend that talks to Firebase.
+This project uses Firebase in two places:
 
----
+- `extension/`: user auth + writing aggregate token totals to Firestore.
+- `frontend/` + `firebase-backend/`: frontend gets Firebase ID token and calls backend `GET /users/me/stats`; backend verifies token and reads Firestore totals.
 
-## Part 1: Create the Firebase project (one-time)
+## 1) Create Firebase project
 
-1. **Go to [Firebase Console](https://console.firebase.google.com/)** and sign in.
+1. In Firebase Console, create a project.
+2. Enable **Authentication → Email/Password** provider.
+3. Create a **Firestore** database.
+4. In **Project settings → Service accounts**, generate a private key JSON for backend/admin use.
 
-2. **Create a project**  
-   - Click “Add project” → name it (e.g. `sustain-usage`) → follow the steps (Analytics optional).
+## 2) Configure web app credentials
 
-3. **Enable Email/Password sign-in**  
-   - In the left sidebar: **Build → Authentication**.  
-   - Open the **Sign-in method** tab.  
-   - Enable **Email/Password** (first provider in the list). Save.
+Current code includes Firebase web config directly in:
 
-4. **Create a Firestore database**  
-   - **Build → Firestore Database** → **Create database**.  
-   - Choose **Start in test mode** (you’ll lock it down with rules next).  
-   - Pick a region and enable.
+- `extension/src/firebase-config.js`
+- `frontend/client/src/lib/firebase.ts`
 
-5. **Set Firestore security rules**  
-   - In Firestore, open the **Rules** tab and replace with:
+If you use a different Firebase project, update both files with the same project credentials.
+
+## 3) Firestore data model used by code
+
+The extension updates aggregate fields in one user document:
+
+- `users/{uid}`
+  - `email` (created on signup)
+  - `createdAt`
+  - `totalTokens` (number)
+  - `totalByProvider` (map, e.g. `chatgpt`, `claude`, `gemini`)
+  - `updatedAt`
+
+The extension currently **does not** persist one document per usage event to Firestore. Usage events are queued in Chrome local storage and merged into aggregate counters.
+
+## 4) Firestore security rules
+
+Use rules aligned with aggregate writes to `users/{uid}`:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users: only the user can read their own doc (by uid)
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    // Usage: only the user can read/write their own usage
-    match /users/{userId}/usage/{usageId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
 ```
 
-   If your backend uses a **top-level `usage` collection** with a `userId` field instead of subcollections, use:
+Publish these rules after updating.
 
-```javascript
-match /usage/{usageId} {
-  allow read, write: if request.auth != null
-    && request.resource.data.userId == request.auth.uid;
-  allow read, write: if request.auth != null
-    && resource.data.userId == request.auth.uid;
-}
-```
+## 5) Backend credentials (firebase-backend)
 
-   Publish the rules.
+For `firebase-backend/app.py`, either:
 
-6. **Get your config (for the backend)**  
-   - **Project settings** (gear) → **Service accounts**.  
-   - Click **Generate new private key** and save the JSON somewhere safe. Your backend will use this to talk to Firebase as Admin (Firestore + Auth if needed).
+- place `serviceAccountKey.json` inside `firebase-backend/`, or
+- set `GOOGLE_APPLICATION_CREDENTIALS` to the key file path.
 
-You don’t need to paste any Firebase config into the extension. The extension only needs your **backend API URL** (e.g. your Cloud Functions URL).
+The backend will verify Firebase ID tokens and read `users/{uid}` totals.
 
----
+## 6) End-to-end flow
 
-## Part 2: Backend that uses Firebase
+1. User signs in with Firebase from extension or frontend.
+2. Extension captures usage, stores pending events in Chrome local storage.
+3. On popup/stats open while authenticated, extension increments aggregate counters in `users/{uid}`.
+4. Frontend sends `Authorization: Bearer <firebase-id-token>` to backend `GET /users/me/stats`.
+5. Backend computes and returns CO2/water/equivalence from `users/{uid}.totalTokens`.
 
-The extension calls:
+## 7) Notes
 
-- `POST /auth/register` – create account  
-- `POST /auth/login` – log in  
-- `POST /usage` – send one usage event (with `Authorization: Bearer <token>`)
-
-You need a small backend that:
-
-1. **Register**: creates a user in Firebase Auth (or in Firestore with a hashed password) and returns a **token** (e.g. Firebase custom token or your own JWT) and `user: { email }`.
-2. **Login**: checks email/password and returns the same kind of **token** and `user: { email }`.
-3. **Usage**: verifies the **token**, gets the user id, then writes one document to Firestore for that user.
-
-Two common options:
-
-- **Option A – Firebase Auth + Firestore**: Backend uses **Firebase Admin SDK** to create users and sign in with email/password (via REST), then returns the Firebase **ID token** (or a custom token). Extension stores that token and sends it on `POST /usage`. Your backend verifies the ID token with Admin Auth and writes to Firestore (e.g. `users/{uid}/usage/{usageId}`).
-- **Option B – Firestore-only users**: Backend stores users in a `users` collection (e.g. `email`, `passwordHash`), issues its own JWT on register/login, and on `POST /usage` verifies the JWT and writes to Firestore (e.g. `users/{userId}/usage` or a top-level `usage` collection with `userId`).
-
----
-
-## Part 3: Firestore layout for token counts
-
-Pick one shape and stick to it.
-
-### Layout A: One subcollection per user (recommended)
-
-- **Collection**: `users`  
-  - **Document ID**: e.g. Firebase Auth `uid` or your own user id.  
-  - **Fields**: `email`, `createdAt` (and `passwordHash` only if you’re not using Firebase Auth).
-
-- **Subcollection**: `users/{userId}/usage`  
-  - **Document ID**: auto-generated.  
-  - **Fields**:  
-    - `provider` (string): `"chatgpt"` | `"claude"` | `"gemini"`  
-    - `model` (string)  
-    - `inputTokens` (number)  
-    - `outputTokens` (number)  
-    - `totalTokens` (number)  
-    - `timestamp` (number, e.g. milliseconds)  
-    - `url` (string, optional)
-
-Each usage event from the extension = one new document in `users/{userId}/usage`.  
-To get **token counts per account**: for one `userId`, sum `totalTokens` over that user’s `usage` subcollection (and optionally group by `provider`).
-
-### Layout B: Single `usage` collection
-
-- **Collection**: `usage`  
-  - **Document ID**: auto-generated.  
-  - **Fields**: same as above, plus **`userId`** (string).
-
-Same idea: one document per event. To get token counts per account, query `usage` where `userId == currentUser` and sum `totalTokens` (and optionally group by `provider`).
-
----
-
-## Part 4: Connect the extension
-
-1. Deploy your backend (Cloud Functions, Cloud Run, or any server) so it exposes:
-   - `POST …/auth/register`
-   - `POST …/auth/login`
-   - `POST …/usage` (with `Authorization: Bearer <token>`)
-
-2. In the extension popup, set **API URL** to your backend base URL (e.g. `https://us-central1-your-project.cloudfunctions.net/api` or `https://your-api.example.com`), then sign up or log in.
-
-3. After login, the extension sends every new usage event to `POST …/usage`. Your backend verifies the token, gets the user id, and writes one document to Firestore as above.
-
----
-
-## Part 5: Example backend (Python + Firebase Admin)
-
-In the repo you’ll find a **Python (Flask)** backend in `firebase-backend/` that:
-
-- Uses **Firebase Admin SDK** (service account key) to write to Firestore.
-- Implements **register** and **login** with email + hashed password (stored in `users` in Firestore) and returns a **JWT**.
-- Implements **POST /usage** by verifying the JWT and adding a document to `users/{userId}/usage`.
-
-Run it locally (see `firebase-backend/README.md`) or deploy to Cloud Run / Cloud Functions. Use its base URL as the **API URL** in the extension popup.
-
-See `firebase-backend/README.md` for how to run and deploy it.
+- `BACKEND.md` describes a legacy API contract (`/auth/*`, `/usage`) used in an earlier architecture.
+- Current frontend integration uses only `GET /users/me/stats` from `firebase-backend`.

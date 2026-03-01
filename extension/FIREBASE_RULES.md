@@ -1,39 +1,46 @@
-# Firebase setup for the extension
+# Firebase setup for the extension (current behavior)
 
-## 1. Authentication
+## 1) Authentication
 
-- **Firebase Console → Build → Authentication → Sign-in method** → turn on **Email/Password** and save.
-- **Authentication → Settings → Authorized domains** → add your extension origin: `chrome-extension://YOUR_EXTENSION_ID` (find the ID in `chrome://extensions` when the extension is loaded).
+- Firebase Console → Build → Authentication → Sign-in method → enable Email/Password.
+- If needed, add your extension origin in Authentication authorized domains.
 
-## 2. Firestore rules
+## 2) Firestore rules
 
-In **Firebase Console → Firestore Database → Rules**, use:
+In Firebase Console → Firestore Database → Rules, use:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      match /usage_events/{eventId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
     }
   }
 }
 ```
 
-Then click **Publish**. This ensures each user can only read/write their own `users/{uid}` doc and `usage_events` subcollection.
+Publish rules after saving.
 
-## 3. Where token data is written
+## 3) Where token data is written
 
-- **`users/{userId}`** – Updated with `totalTokens` (number), `totalByProvider` (map, e.g. `chatgpt`, `claude`, `gemini`), and `updatedAt`. Created on signup with `email` and `createdAt`; token fields are added/updated when usage is synced.
-- **`users/{userId}/usage_events`** – One document per usage event (provider, model, inputTokens, outputTokens, totalTokens, timestamp, url, createdAt).
+Current extension code writes only to:
 
-Token data is **not** written from the background (service worker). It is written when you **open the extension popup** (or the stats page) while logged in. Usage is queued in the extension and synced to Firestore on that open. If token data never appears:
+- `users/{userId}`
+  - `totalTokens`
+  - `totalByProvider.<provider>`
+  - `updatedAt`
 
-1. **Open the popup after using an LLM** – Use ChatGPT/Claude/Gemini, then click the extension icon so the popup opens and runs the sync.
-2. **Check Firestore rules** – Rules must allow `read, write` for `users/{userId}` and `users/{userId}/usage_events/{eventId}` when `request.auth.uid == userId`. Publish the rules above if you haven’t.
-3. **Check the console** – Right‑click the extension icon → “Inspect popup”. In the Console, look for `[sustAIn] Sync to Firestore failed:` to see permission or network errors.
+It does not currently create per-event Firestore docs such as `usage_events`.
+
+## 4) Sync timing
+
+- Content scripts push events to `chrome.storage.local.pendingFirestore`.
+- Firestore sync happens when popup or stats page code runs while user is authenticated.
+- If you never open popup/stats after activity, queued events remain local.
+
+## 5) If data is not appearing
+
+1. Open popup or stats page after using ChatGPT/Claude/Gemini.
+2. Confirm Firestore rules allow read/write on `users/{uid}`.
+3. Inspect extension popup console for errors (`[sustAIn] Sync to Firestore failed:`).
