@@ -50,6 +50,34 @@ Supported domains:
 - Returns computed `totalCO2`, `totalWater`, and equivalence fields.
 - Intended for local dev and Cloud Run deployment on GCP.
 
+## Calculation logic (current implementation)
+
+### Quick conversion cheat sheet
+
+- **1 token = 0.5 mL water**
+- **1000 tokens = 500 mL = ~1 standard water bottle**
+- **1 token = 0.01 g CO₂**
+- **1000 tokens = 10 g CO₂**
+
+### How the app computes impact
+
+- **Frontend water shown in dashboard:**
+  - `todayMl = round(totalTokens × 0.5)`
+- **Backend water shown in API response:**
+  - `totalWater_liters = totalTokens × 0.0005` (same conversion, different unit)
+- **Backend CO₂ shown in API response:**
+  - `totalCO2_grams = totalTokens × 0.01`
+- **Default daily goal:**
+  - `500 mL` (equivalent to ~`1000 tokens`)
+
+### Real World Examples
+
+- **500 tokens** → `250 mL` water → `~0.5 bottle` → `5 g CO₂`
+- **5,400 tokens** → `2,700 mL` (`2.7 L`) water → `~5.4 bottles` → `54 g CO₂`
+- **10,000 tokens** → `5,000 mL` (`5 L`) water → `~10 bottles` → `100 g CO₂`
+
+CO₂ equivalence strings (feet/miles driven, days to offset) are derived from backend CO₂ totals.
+
 ## Quick start
 
 🚀 [Open the live demo](https://cheesehacks-vrbo.vercel.app/login)
