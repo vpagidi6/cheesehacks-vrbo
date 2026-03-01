@@ -8,9 +8,21 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
   const reqRef = useRef<number>();
   const currentPercentage = useRef(0);
   const mouse = useRef({ x: -1, y: -1, isHovering: false, vY: 0, lastY: -1 });
+  const inactivityTimer = useRef(0);
 
   const NUM_POINTS = 50; 
   const springs = useRef(Array.from({ length: NUM_POINTS }, () => ({ p: 0, v: 0 })));
+
+  const numFishes = 5;
+  const fishes = useRef(Array.from({ length: numFishes }, () => ({
+    x: Math.random() * 500, // will be clamped or wrapped
+    y: Math.random() * 500,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 0.5,
+    scale: 0.5 + Math.random() * 0.4,
+    color: ['#f97316', '#fb923c', '#fdba74', '#ea580c'][Math.floor(Math.random() * 4)] // Orange hues
+  })));
+  const fishRefs = useRef<(SVGGElement | null)[]>([]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -23,6 +35,7 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
         return;
       }
 
+      inactivityTimer.current = 0;
       mouse.current.x = e.clientX - rect.left;
       const currentY = e.clientY - rect.top;
       
@@ -40,8 +53,8 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
   }, []);
 
   useEffect(() => {
-    const TENSION = 0.025;
-    const DAMPENING = 0.025;
+    const TENSION = 0.015; // lower tension for more fluid, loose water
+    const DAMPENING = 0.04; // higher dampening to settle down faster
     const SPREAD = 0.25;
     let lastTime = performance.now();
 
@@ -53,6 +66,7 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
       
       const dt = Math.min(time - lastTime, 32);
       lastTime = time;
+      inactivityTimer.current += dt;
 
       // Animate fill up smoothly
       currentPercentage.current += (percentage - currentPercentage.current) * 0.03;
@@ -70,16 +84,17 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
         const radius = 60;
         if (Math.abs(y - surfaceY) < radius) {
           const index = Math.max(0, Math.min(NUM_POINTS - 1, Math.floor((x / w) * NUM_POINTS)));
-          const appliedVelocity = Math.max(-20, Math.min(20, vY * 0.5));
+          const appliedVelocity = Math.max(-15, Math.min(15, vY * 0.4));
           springs.current[index].v += appliedVelocity;
           mouse.current.vY *= 0.5; // Dampen the applied velocity quickly
         }
       }
 
-      // Continuous gentle ambient wave
+      // Ambient wave decays when inactive
       const timeSec = time / 1000;
-      springs.current[0].p += Math.sin(timeSec * 2.5) * 0.8;
-      springs.current[NUM_POINTS - 1].p += Math.cos(timeSec * 2.1) * 0.8;
+      const ambientAmplitude = Math.max(0.1, 0.8 - inactivityTimer.current / 3000);
+      springs.current[0].p += Math.sin(timeSec * 2.5) * ambientAmplitude;
+      springs.current[NUM_POINTS - 1].p += Math.cos(timeSec * 2.1) * ambientAmplitude;
 
       // Physics update
       for (let i = 0; i < NUM_POINTS; i++) {
@@ -120,7 +135,7 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
         const p = springs.current[i].p;
         d1 += ` L ${x1} ${surfaceY + p}`;
         
-        const p2 = -p * 0.4 + Math.sin(i * 0.3 + timeSec * 2) * 3;
+        const p2 = -p * 0.4 + Math.sin(i * 0.3 + timeSec * 2) * 3 * (ambientAmplitude / 0.8);
         d2 += ` L ${x1} ${surfaceY + p2}`;
       }
       d1 += ` L ${w} ${h} Z`;
@@ -129,12 +144,60 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
       path1Ref.current.setAttribute("d", d1);
       path2Ref.current.setAttribute("d", d2);
       
+      // Update Fishes
+      const fishYMin = surfaceY + 20; 
+      const fishYMax = h - 20;
+      
+      fishes.current.forEach((fish, i) => {
+        const isVisible = fillH > 40; // Only show fish if enough water
+        
+        fish.x += fish.vx;
+        fish.y += fish.vy;
+
+        // Wrap around horizontally
+        if (fish.x < -50) fish.x = w + 50;
+        else if (fish.x > w + 50) fish.x = -50;
+
+        // Bounce off water surface / bottom
+        if (fish.y < fishYMin) {
+          fish.y = fishYMin;
+          fish.vy = Math.abs(fish.vy);
+        } else if (fish.y > fishYMax) {
+          fish.y = fishYMax;
+          fish.vy = -Math.abs(fish.vy);
+        }
+
+        // Randomly change direction/speed slightly
+        if (Math.random() < 0.02) {
+          fish.vx += (Math.random() - 0.5) * 0.5;
+          fish.vy += (Math.random() - 0.5) * 0.5;
+          
+          const maxVx = 1.5;
+          const minVx = 0.3;
+          if (fish.vx > 0) {
+            fish.vx = Math.max(minVx, Math.min(maxVx, fish.vx));
+          } else {
+            fish.vx = Math.min(-minVx, Math.max(-maxVx, fish.vx));
+          }
+          
+          fish.vy = Math.max(-0.5, Math.min(0.5, fish.vy));
+        }
+
+        const fishEl = fishRefs.current[i];
+        if (fishEl) {
+           const scaleX = fish.vx < 0 ? -fish.scale : fish.scale;
+           const displayOpacity = isVisible ? (isWarning ? 0.2 : 0.7) : 0;
+           fishEl.setAttribute('transform', `translate(${fish.x}, ${fish.y}) scale(${scaleX}, ${fish.scale})`);
+           fishEl.setAttribute('opacity', displayOpacity.toString());
+        }
+      });
+
       reqRef.current = requestAnimationFrame(tick);
     };
 
     reqRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(reqRef.current!);
-  }, [percentage]);
+  }, [percentage, isWarning]);
 
   const baseColor = isWarning ? "text-red-500" : "text-blue-500";
 
@@ -156,6 +219,15 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
           strokeOpacity="0.4"
           strokeLinejoin="round"
         />
+        
+        {/* Fishes */}
+        {fishes.current.map((fish, i) => (
+          <g key={i} ref={(el) => { if (el) fishRefs.current[i] = el; }} className="transition-opacity duration-1000">
+             <path d="M 0 0 C 10 -8 20 -4 25 0 C 20 4 10 8 0 0 Z M 0 0 L -8 -6 L -8 6 Z" fill={fish.color} />
+             <circle cx="18" cy="-1.5" r="1.5" fill="white" />
+             <circle cx="18.5" cy="-1.5" r="0.8" fill="black" />
+          </g>
+        ))}
       </svg>
     </div>
   );
