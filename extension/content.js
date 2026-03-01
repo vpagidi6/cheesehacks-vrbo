@@ -180,6 +180,19 @@
       });
     }
 
+    function processExistingAssistantMessages() {
+      var parts = config.assistantSelector.split(",").map(function (s) { return s.trim(); });
+      for (var i = 0; i < parts.length; i++) {
+        var nodes = [];
+        try {
+          nodes = document.querySelectorAll(parts[i]);
+        } catch (_) {
+          continue;
+        }
+        for (var j = 0; j < nodes.length; j++) processCandidate(nodes[j]);
+      }
+    }
+
     var observer = new MutationObserver(function (mutations) {
       mutations.forEach(function (mutation) {
         for (var i = 0; i < mutation.addedNodes.length; i++) {
@@ -201,12 +214,31 @@
 
     function startObserving() {
       observer.observe(document.body, { childList: true, subtree: true });
+      processExistingAssistantMessages();
     }
     if (config.provider === "claude" || config.provider === "gemini") {
       setTimeout(startObserving, 500);
     } else {
       startObserving();
     }
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") {
+        processExistingAssistantMessages();
+      }
+    });
+
+    window.addEventListener("focus", function () {
+      processExistingAssistantMessages();
+    });
+
+    try {
+      chrome.runtime.onMessage.addListener(function (msg) {
+        if (msg && msg.type === "TAB_ACTIVATED") {
+          processExistingAssistantMessages();
+        }
+      });
+    } catch (_) {}
   }
 
   var config = getConfig();
