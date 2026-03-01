@@ -28,7 +28,7 @@ This repository now contains three parts:
 - Queues usage locally in `chrome.storage`.
 - On popup auth state, syncs queued totals into Firestore `users/{uid}` aggregate fields.
 
-Supported domains:
+Supported Websites:
 
 - `https://chatgpt.com/*`
 - `https://chat.openai.com/*`
