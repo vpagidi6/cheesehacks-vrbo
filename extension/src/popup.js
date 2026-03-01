@@ -9,13 +9,7 @@ import {
   doc,
   setDoc,
   getDoc,
-  getDocs,
-  collection,
-  query,
-  orderBy,
-  limit,
   serverTimestamp,
-  addDoc,
   updateDoc,
   increment,
 } from "firebase/firestore";
@@ -151,16 +145,6 @@ async function syncPendingToFirestore(user) {
         for (const ev of pending) {
           const totalTokens = Number(ev.totalTokens) || 0;
           const provider = (ev.provider || "unknown").trim().toLowerCase();
-          await addDoc(collection(db, "users", uid, "usage_events"), {
-            provider,
-            model: ev.model || "estimated",
-            inputTokens: Number(ev.inputTokens) || 0,
-            outputTokens: Number(ev.outputTokens) || 0,
-            totalTokens,
-            timestamp: ev.timestamp || Date.now(),
-            url: ev.url || "",
-            createdAt: serverTimestamp(),
-          });
           await updateDoc(doc(db, "users", uid), {
             totalTokens: increment(totalTokens),
             [`totalByProvider.${provider}`]: increment(totalTokens),
@@ -187,14 +171,6 @@ async function loadDashboard(user) {
   try {
     const userSnap = await getDoc(doc(db, "users", user.uid));
     if (userSnap.exists()) totals = userSnap.data();
-
-    const q = query(
-      collection(db, "users", user.uid, "usage_events"),
-      orderBy("timestamp", "desc"),
-      limit(50)
-    );
-    const snap = await getDocs(q);
-    events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   } catch (_) {}
 
   chrome.storage.local.get(["usageHistory"], (r) => {
