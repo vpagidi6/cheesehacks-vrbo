@@ -9,6 +9,7 @@ import { ProviderBreakdown } from "@/components/dashboard/provider-breakdown";
 import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
 import { WaterUsageCard } from "@/components/dashboard/water-usage-card";
 import { CO2EmissionsCard } from "@/components/dashboard/co2-emissions-card";
+import { PerspectiveCard } from "@/components/dashboard/perspective-card";
 
 export default function Dashboard() {
   const now = new Date();
@@ -108,6 +109,14 @@ export default function Dashboard() {
                 </div>
               </div>
             </Card>
+
+            {/* Perspective Card (Full Width underneath Usage, above Heatmap) */}
+            <div className="lg:col-span-3">
+              <PerspectiveCard 
+                waterLiters={data.today.ml / 1000} // Convert mL to Liters
+                milesDrivenString={data.equivalence}
+              />
+            </div>
 
             {/* By Provider Card */}
             <Card className="shadow-sm border-slate-200">
