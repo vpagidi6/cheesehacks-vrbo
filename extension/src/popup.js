@@ -39,7 +39,7 @@ function getEquivalence(gramsCO2) {
   return `~${miles.toFixed(1)} mi driven`;
 }
 
-function render(totals, events, localHistory) {
+function render(totals) {
   const totalTokens = totals?.totalTokens ?? 0;
   const totalCO2 = totalTokens * GRAM_CO2_PER_TOKEN;
 
@@ -48,11 +48,6 @@ function render(totals, events, localHistory) {
   document.getElementById("equivalence").textContent = getEquivalence(totalCO2);
 
   const byProvider = { ...(totals?.totalByProvider || {}) };
-  (localHistory || []).forEach((h) => {
-    const p = (h.provider || "unknown").trim().toLowerCase();
-    if (!byProvider[p]) byProvider[p] = 0;
-    byProvider[p] += h.totalTokens || 0;
-  });
 
   const providerGrid = document.getElementById("provider-grid");
   if (providerGrid) {
@@ -68,43 +63,6 @@ function render(totals, events, localHistory) {
         <span class="provider-tokens">${formatNumber(tokens)} tokens</span>
       `;
       providerGrid.appendChild(row);
-    }
-  }
-
-  const historyList = document.getElementById("history-list");
-  if (historyList) {
-    historyList.innerHTML = "";
-    const combined = [
-      ...(events || []).map((e) => ({
-        provider: e.provider,
-        totalTokens: e.totalTokens,
-        timestamp:
-          (typeof e.timestamp === "number" && e.timestamp) ||
-          (e.timestamp?.toMillis && e.timestamp.toMillis()) ||
-          (e.createdAt?.toMillis && e.createdAt.toMillis()) ||
-          0,
-      })),
-      ...(localHistory || []).map((h) => ({
-        provider: h.provider,
-        totalTokens: h.totalTokens,
-        timestamp: h.timestamp || 0,
-      })),
-    ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-    const recent = combined.slice(0, 20);
-
-    if (recent.length === 0) {
-      historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT, Claude, or Gemini – tokens are estimated from text.</div>`;
-    } else {
-      recent.forEach((h) => {
-        const item = document.createElement("div");
-        item.className = "history-item";
-        const time = new Date(h.timestamp).toLocaleString();
-        item.innerHTML = `
-          <span class="history-provider">${h.provider || "?"}</span>
-          <span class="history-details">${formatNumber(h.totalTokens || 0)} tokens · ${time}</span>
-        `;
-        historyList.appendChild(item);
-      });
     }
   }
 }
@@ -173,15 +131,19 @@ async function loadDashboard(user) {
   if (emailEl) emailEl.textContent = user.email || "";
 
   let totals = { totalTokens: 0, totalByProvider: {} };
-  let events = [];
 
   try {
     const userSnap = await getDoc(doc(db, "users", user.uid));
     if (userSnap.exists()) totals = userSnap.data();
   } catch (_) {}
 
-  chrome.storage.local.get(["usageHistory"], (r) => {
-    render(totals, events, r.usageHistory || []);
+  chrome.storage.local.get(["pendingFirestore"], (r) => {
+    const pending = r.pendingFirestore || [];
+    if (pending.length > 0) {
+      syncPendingToFirestore(user).then(() => loadDashboard(user));
+      return;
+    }
+    render(totals);
   });
 }
 
@@ -270,17 +232,16 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
 document.getElementById("btn-clear").addEventListener("click", async () => {
   if (!confirm("Clear local usage data? (Cloud data is kept.)")) return;
   const user = auth.currentUser;
-  chrome.storage.local.set({ usageHistory: [], pendingFirestore: [] });
+  chrome.storage.local.set({ pendingFirestore: [] });
   if (user) {
     await loadDashboard(user);
   } else {
-    render({ totalTokens: 0, totalByProvider: {} }, [], []);
+    render({ totalTokens: 0, totalByProvider: {} });
   }
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
-  if (changes.usageHistory && auth.currentUser) loadDashboard(auth.currentUser);
   if (changes.pendingFirestore && auth.currentUser) {
     const pending = changes.pendingFirestore.newValue || [];
     if (pending.length > 0) syncPendingToFirestore(auth.currentUser).then(() => loadDashboard(auth.currentUser));

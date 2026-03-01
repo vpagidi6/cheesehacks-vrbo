@@ -12,41 +12,27 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     .then(() => {
       return new Promise((resolve) => {
         chrome.storage.local.get(
-          ["usageHistory", "firebaseUid", "pendingFirestore"],
+          ["firebaseUid", "pendingFirestore"],
           (r) => {
-            const history = r.usageHistory || [];
-            history.push(payload);
             const uid = r.firebaseUid;
-
-            const onHistoryWritten = () => {
-              if (!uid) {
-                resolve();
-                return;
-              }
-              const totalTokens =
-                Number(payload.totalTokens) ||
-                Number(payload.inputTokens) + Number(payload.outputTokens) ||
-                0;
-              const provider = (payload.provider || "unknown").trim().toLowerCase();
-              const pending = r.pendingFirestore || [];
-              pending.push({
-                provider,
-                model: payload.model || "estimated",
-                inputTokens: Number(payload.inputTokens) || 0,
-                outputTokens: Number(payload.outputTokens) || 0,
-                totalTokens,
-                timestamp: payload.timestamp || Date.now(),
-                url: payload.url || "",
-              });
-              chrome.storage.local.set(
-                { pendingFirestore: pending.slice(-500) },
-                () => resolve()
-              );
-            };
-
+            const totalTokens =
+              Number(payload.totalTokens) ||
+              Number(payload.inputTokens) + Number(payload.outputTokens) ||
+              0;
+            const provider = (payload.provider || "unknown").trim().toLowerCase();
+            const pending = r.pendingFirestore || [];
+            pending.push({
+              provider,
+              model: payload.model || "estimated",
+              inputTokens: Number(payload.inputTokens) || 0,
+              outputTokens: Number(payload.outputTokens) || 0,
+              totalTokens,
+              timestamp: payload.timestamp || Date.now(),
+              url: payload.url || "",
+            });
             chrome.storage.local.set(
-              { usageHistory: history.slice(-10000) },
-              onHistoryWritten
+              { pendingFirestore: pending.slice(-500) },
+              () => resolve()
             );
           }
         );
@@ -61,4 +47,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     });
 
   return true;
+});
+
+chrome.tabs.onActivated.addListener((activeInfo) => {
+  chrome.tabs.sendMessage(activeInfo.tabId, { type: "TAB_ACTIVATED" }).catch(() => {});
 });

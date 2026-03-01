@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Track your LLM token usage and environmental impact",
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "https://chatgpt.com/*",
@@ -26,7 +27,7 @@
       "js": [
         "content.js"
       ],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   "background": {
