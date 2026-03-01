@@ -5519,9 +5519,6 @@
   };
   TwitterAuthProvider.TWITTER_SIGN_IN_METHOD = "twitter.com";
   TwitterAuthProvider.PROVIDER_ID = "twitter.com";
-  async function signUp(auth2, request) {
-    return _performSignInRequest(auth2, "POST", "/v1/accounts:signUp", _addTidIfNecessary(auth2, request));
-  }
   var UserCredentialImpl = class _UserCredentialImpl {
     constructor(params) {
       this.user = params.user;
@@ -5646,56 +5643,6 @@
       await auth2._updateCurrentUser(userCredential.user);
     }
     return userCredential;
-  }
-  async function signInWithCredential(auth2, credential) {
-    return _signInWithCredential(_castAuth(auth2), credential);
-  }
-  async function recachePasswordPolicy(auth2) {
-    const authInternal = _castAuth(auth2);
-    if (authInternal._getPasswordPolicyInternal()) {
-      await authInternal._updatePasswordPolicy();
-    }
-  }
-  async function createUserWithEmailAndPassword(auth2, email, password) {
-    if (_isFirebaseServerApp(auth2.app)) {
-      return Promise.reject(_serverAppCurrentUserOperationNotSupportedError(auth2));
-    }
-    const authInternal = _castAuth(auth2);
-    const request = {
-      returnSecureToken: true,
-      email,
-      password,
-      clientType: "CLIENT_TYPE_WEB"
-      /* RecaptchaClientType.WEB */
-    };
-    const signUpResponse = handleRecaptchaFlow(
-      authInternal,
-      request,
-      "signUpPassword",
-      signUp,
-      "EMAIL_PASSWORD_PROVIDER"
-      /* RecaptchaAuthProvider.EMAIL_PASSWORD_PROVIDER */
-    );
-    const response = await signUpResponse.catch((error) => {
-      if (error.code === `auth/${"password-does-not-meet-requirements"}`) {
-        void recachePasswordPolicy(auth2);
-      }
-      throw error;
-    });
-    const userCredential = await UserCredentialImpl._fromIdTokenResponse(authInternal, "signIn", response);
-    await authInternal._updateCurrentUser(userCredential.user);
-    return userCredential;
-  }
-  function signInWithEmailAndPassword(auth2, email, password) {
-    if (_isFirebaseServerApp(auth2.app)) {
-      return Promise.reject(_serverAppCurrentUserOperationNotSupportedError(auth2));
-    }
-    return signInWithCredential(getModularInstance(auth2), EmailAuthProvider.credential(email, password)).catch(async (error) => {
-      if (error.code === `auth/${"password-does-not-meet-requirements"}`) {
-        void recachePasswordPolicy(auth2);
-      }
-      throw error;
-    });
   }
   function setPersistence(auth2, persistence) {
     return getModularInstance(auth2).setPersistence(persistence);
@@ -20689,11 +20636,6 @@ This typically indicates that your device does not have a healthy Internet conne
     const t = __PRIVATE_cast(e.firestore, Firestore), n = ensureFirestoreConfigured(t), r = new __PRIVATE_ExpUserDataWriter(t);
     return __PRIVATE_validateHasExplicitOrderByForLimitToLast(e._query), __PRIVATE_firestoreClientGetDocumentsViaSnapshotListener(n, e._query).then((n2) => new QuerySnapshot(t, r, e, n2));
   }
-  function setDoc(e, t, n) {
-    e = __PRIVATE_cast(e, DocumentReference);
-    const r = __PRIVATE_cast(e.firestore, Firestore), i = __PRIVATE_applyFirestoreDataConverter(e.converter, t, n);
-    return executeWrite(r, [__PRIVATE_parseSetData(__PRIVATE_newUserDataReader(r), "setDoc", e._key, i, null !== e.converter, n).toMutation(e._key, Precondition.none())]);
-  }
   function updateDoc(e, t, n, ...r) {
     e = __PRIVATE_cast(e, DocumentReference);
     const i = __PRIVATE_cast(e.firestore, Firestore), s = __PRIVATE_newUserDataReader(i);
@@ -20753,7 +20695,7 @@ This typically indicates that your device does not have a healthy Internet conne
   setPersistence(auth, browserLocalPersistence).catch(() => {
   });
 
-  // src/popup.js
+  // src/stats.js
   var GRAM_CO2_PER_TOKEN = 0.01;
   var GRAM_CO2_PER_MILE_DRIVING = 400;
   var GRAM_CO2_PER_TREE_YEAR = 21e3;
@@ -20778,9 +20720,12 @@ This typically indicates that your device does not have a healthy Internet conne
   function render(totals, events, localHistory) {
     const totalTokens = totals?.totalTokens ?? 0;
     const totalCO2 = totalTokens * GRAM_CO2_PER_TOKEN;
-    document.getElementById("total-tokens").textContent = formatNumber(totalTokens);
-    document.getElementById("total-co2").textContent = formatCO2(totalCO2);
-    document.getElementById("equivalence").textContent = getEquivalence(totalCO2);
+    const totalEl = document.getElementById("total-tokens");
+    const co2El = document.getElementById("total-co2");
+    const equivEl = document.getElementById("equivalence");
+    if (totalEl) totalEl.textContent = formatNumber(totalTokens);
+    if (co2El) co2El.textContent = formatCO2(totalCO2);
+    if (equivEl) equivEl.textContent = getEquivalence(totalCO2);
     const byProvider = { ...totals?.totalByProvider || {} };
     (localHistory || []).forEach((h) => {
       const p = (h.provider || "unknown").trim().toLowerCase();
@@ -20804,60 +20749,43 @@ This typically indicates that your device does not have a healthy Internet conne
       }
     }
     const historyList = document.getElementById("history-list");
-    if (historyList) {
-      historyList.innerHTML = "";
-      const combined = [
-        ...(events || []).map((e) => ({
-          provider: e.provider,
-          totalTokens: e.totalTokens,
-          timestamp: typeof e.timestamp === "number" && e.timestamp || e.timestamp?.toMillis && e.timestamp.toMillis() || e.createdAt?.toMillis && e.createdAt.toMillis() || 0
-        })),
-        ...(localHistory || []).map((h) => ({
-          provider: h.provider,
-          totalTokens: h.totalTokens,
-          timestamp: h.timestamp || 0
-        }))
-      ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      const recent = combined.slice(0, 20);
-      if (recent.length === 0) {
-        historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT, Claude, or Gemini \u2013 tokens are estimated from text.</div>`;
-      } else {
-        recent.forEach((h) => {
-          const item = document.createElement("div");
-          item.className = "history-item";
-          const time = new Date(h.timestamp).toLocaleString();
-          item.innerHTML = `
-          <span class="history-provider">${h.provider || "?"}</span>
-          <span class="history-details">${formatNumber(h.totalTokens || 0)} tokens \xB7 ${time}</span>
-        `;
-          historyList.appendChild(item);
-        });
-      }
-    }
-  }
-  function showScreen(screenId) {
-    const login = document.getElementById("login-screen");
-    const signup = document.getElementById("signup-screen");
-    const dashboard = document.getElementById("dashboard-screen");
-    if (login) login.hidden = screenId !== "login-screen";
-    if (signup) signup.hidden = screenId !== "signup-screen";
-    if (dashboard) dashboard.hidden = screenId !== "dashboard-screen";
-  }
-  function setAuthError(elId, message) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    el.textContent = message || "";
-    if (message) {
-      el.removeAttribute("hidden");
-      el.setAttribute("role", "alert");
+    if (!historyList) return;
+    historyList.innerHTML = "";
+    const combined = [
+      ...(events || []).map((e) => ({
+        provider: e.provider,
+        totalTokens: e.totalTokens,
+        timestamp: typeof e.timestamp === "number" && e.timestamp || e.timestamp?.toMillis && e.timestamp.toMillis() || e.createdAt?.toMillis && e.createdAt.toMillis() || 0
+      })),
+      ...(localHistory || []).map((h) => ({
+        provider: h.provider,
+        totalTokens: h.totalTokens,
+        timestamp: h.timestamp || 0
+      }))
+    ].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    const recent = combined.slice(0, 20);
+    if (recent.length === 0) {
+      historyList.innerHTML = `<div class="empty-state">Send prompts on ChatGPT, Claude, or Gemini \u2013 tokens are estimated from text.</div>`;
     } else {
-      el.setAttribute("hidden", "");
-      el.removeAttribute("role");
+      recent.forEach((h) => {
+        const item = document.createElement("div");
+        item.className = "history-item";
+        const time = new Date(h.timestamp).toLocaleString();
+        item.innerHTML = `
+        <span class="history-provider">${h.provider || "?"}</span>
+        <span class="history-details">${formatNumber(h.totalTokens || 0)} tokens \xB7 ${time}</span>
+      `;
+        historyList.appendChild(item);
+      });
     }
   }
   async function syncPendingToFirestore(user) {
     if (!user) return;
     return new Promise((resolve) => {
+      if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+        resolve();
+        return;
+      }
       chrome.storage.local.get(["pendingFirestore"], async (r) => {
         const pending = r.pendingFirestore || [];
         if (pending.length === 0) {
@@ -20911,78 +20839,37 @@ This typically indicates that your device does not have a healthy Internet conne
       events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     } catch (_) {
     }
-    chrome.storage.local.get(["usageHistory"], (r) => {
-      render(totals, events, r.usageHistory || []);
+    return new Promise((resolve) => {
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(["usageHistory"], (r) => {
+          render(totals, events, r.usageHistory || []);
+          resolve();
+        });
+      } else {
+        render(totals, events, []);
+        resolve();
+      }
     });
   }
-  document.getElementById("btn-show-signup").addEventListener("click", () => {
-    setAuthError("auth-error", "");
-    showScreen("signup-screen");
-  });
-  document.getElementById("btn-show-login").addEventListener("click", () => {
-    setAuthError("signup-error", "");
-    showScreen("login-screen");
-  });
-  document.getElementById("login-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setAuthError("auth-error", "");
-    const email = document.getElementById("login-email").value.trim();
-    const password = document.getElementById("login-password").value;
-    const btn = document.getElementById("btn-login");
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Signing in\u2026";
-    try {
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      chrome.storage.local.set({ firebaseUid: userCred.user.uid });
-      setAuthError("auth-error", "");
-      showScreen("dashboard-screen");
-      await syncPendingToFirestore(userCred.user);
-      await loadDashboard(userCred.user);
-    } catch (err) {
-      const msg = err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" ? "Invalid email or password" : err.code === "auth/operation-not-allowed" ? "Email/Password sign-in is disabled in Firebase Console." : err.message || "Login failed";
-      setAuthError("auth-error", msg);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = origText;
-    }
-  });
-  document.getElementById("signup-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setAuthError("signup-error", "");
-    const email = document.getElementById("signup-email").value.trim();
-    const password = document.getElementById("signup-password").value;
-    const btn = document.getElementById("btn-signup");
-    const origText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Creating account\u2026";
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", cred.user.uid), {
-        email,
-        createdAt: serverTimestamp()
-      });
-      chrome.storage.local.set({ firebaseUid: cred.user.uid });
-      setAuthError("signup-error", "");
-      showScreen("dashboard-screen");
-      await syncPendingToFirestore(cred.user);
-      await loadDashboard(cred.user);
-    } catch (err) {
-      const msg = err.code === "auth/email-already-in-use" ? "Email already registered" : err.code === "auth/operation-not-allowed" ? "Enable Email/Password in Firebase Console \u2192 Authentication." : err.message || "Sign up failed";
-      setAuthError("signup-error", msg);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = origText;
-    }
-  });
-  document.getElementById("btn-logout").addEventListener("click", async () => {
+  function showLoggedOut() {
+    const out = document.getElementById("logged-out-view");
+    const dash = document.getElementById("dashboard-screen");
+    if (out) out.classList.remove("hidden");
+    if (dash) dash.classList.add("hidden");
+  }
+  function showDashboard() {
+    const out = document.getElementById("logged-out-view");
+    const dash = document.getElementById("dashboard-screen");
+    if (out) out.classList.add("hidden");
+    if (dash) dash.classList.remove("hidden");
+  }
+  document.getElementById("btn-logout")?.addEventListener("click", async () => {
     await signOut(auth);
-    chrome.storage.local.remove(["firebaseUid"]);
-    showScreen("login-screen");
-    setAuthError("auth-error", "");
+    showLoggedOut();
   });
-  document.getElementById("btn-clear").addEventListener("click", async () => {
+  document.getElementById("btn-clear")?.addEventListener("click", async () => {
     if (!confirm("Clear local usage data? (Cloud data is kept.)")) return;
+    if (typeof chrome === "undefined" || !chrome.storage?.local) return;
     const user = auth.currentUser;
     chrome.storage.local.set({ usageHistory: [], pendingFirestore: [] });
     if (user) {
@@ -20991,33 +20878,24 @@ This typically indicates that your device does not have a healthy Internet conne
       render({ totalTokens: 0, totalByProvider: {} }, [], []);
     }
   });
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    if (changes.usageHistory && auth.currentUser) loadDashboard(auth.currentUser);
-    if (changes.pendingFirestore && auth.currentUser) {
-      const pending = changes.pendingFirestore.newValue || [];
-      if (pending.length > 0) syncPendingToFirestore(auth.currentUser).then(() => loadDashboard(auth.currentUser));
-    }
-  });
-  showScreen("login-screen");
-  onAuthStateChanged(auth, async (user) => {
-    try {
-      if (user) {
-        chrome.storage.local.set({ firebaseUid: user.uid });
-        const emailEl = document.getElementById("user-email");
-        if (emailEl) emailEl.textContent = user.email || "";
-        showScreen("dashboard-screen");
-        await syncPendingToFirestore(user);
-        loadDashboard(user);
-      } else {
-        chrome.storage.local.remove(["firebaseUid"]);
-        showScreen("login-screen");
-        setAuthError("auth-error", "");
-        setAuthError("signup-error", "");
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.usageHistory && auth.currentUser) loadDashboard(auth.currentUser);
+      if (changes.pendingFirestore && auth.currentUser) {
+        const pending = changes.pendingFirestore.newValue || [];
+        if (pending.length > 0) syncPendingToFirestore(auth.currentUser).then(() => loadDashboard(auth.currentUser));
       }
-    } catch (e) {
-      showScreen("login-screen");
-      setAuthError("auth-error", "Something went wrong. Try again.");
+    });
+  }
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      showDashboard();
+      document.getElementById("user-email").textContent = user.email || "";
+      await syncPendingToFirestore(user);
+      await loadDashboard(user);
+    } else {
+      showLoggedOut();
     }
   });
 })();
@@ -21783,6 +21661,24 @@ firebase/app/dist/esm/index.esm.js:
   (**
    * @license
    * Copyright 2019 Google LLC
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *   http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   *)
+
+@firebase/auth/dist/esm2017/index-35c79a8a.js:
+  (**
+   * @license
+   * Copyright 2020 Google LLC
    *
    * Licensed under the Apache License, Version 2.0 (the "License");
    * you may not use this file except in compliance with the License.

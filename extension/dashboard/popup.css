@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+.hidden {
+  display: none !important;
+}
+
 :root {
   --bg: #0f1419;
   --bg-card: #1a2332;
@@ -205,6 +209,9 @@ body {
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .btn-clear {
@@ -272,9 +279,14 @@ body {
 }
 
 .auth-error {
-  margin: 0;
+  margin: 0 0 8px 0;
+  min-height: 1.2em;
   font-size: 0.85rem;
   color: var(--danger);
+}
+
+.auth-error[hidden] {
+  display: none;
 }
 
 .btn {
@@ -300,6 +312,16 @@ body {
 
 .btn-primary:hover:not(:disabled) {
   opacity: 0.95;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-card-hover);
 }
 
 .auth-footer {
