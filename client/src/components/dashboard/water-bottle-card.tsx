@@ -12,27 +12,19 @@ export function WaterBottleCard({ ml }: WaterBottleCardProps) {
   const displayCount = useGrouped ? Math.ceil(bottleCount / 5) : bottleCount;
   
   const [hasAnimated, setHasAnimated] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
+  // We simplify the effect here since ScrollReveal remounts the component
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasAnimated]);
+    // A small delay to let the mount happen before changing the state
+    const timer = setTimeout(() => {
+      setHasAnimated(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
-    <Card className="shadow-sm border-slate-200 overflow-hidden md:col-span-3">
+    <Card className="shadow-sm border-slate-200 overflow-hidden h-full">
       <CardHeader className="pb-3 border-b border-slate-100 bg-white">
         <CardTitle className="text-xl flex items-center gap-2">
           Water Used Today
@@ -41,7 +33,7 @@ export function WaterBottleCard({ ml }: WaterBottleCardProps) {
           Equivalent to {bottleCount.toLocaleString()} standard water bottles (500 mL each)
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 bg-slate-50 min-h-[200px]" ref={containerRef}>
+      <CardContent className="p-6 bg-slate-50 min-h-[200px]">
         {useGrouped && (
           <div className="mb-4 inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-sm font-medium border border-blue-100">
             <BottleIcon className="w-4 h-6 text-blue-500 drop-shadow-none" />

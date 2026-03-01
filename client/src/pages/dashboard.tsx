@@ -9,6 +9,7 @@ import { WaterUsageCard } from "@/components/dashboard/water-usage-card";
 import { CO2EmissionsCard } from "@/components/dashboard/co2-emissions-card";
 import { PerspectiveCard } from "@/components/dashboard/perspective-card";
 import { WaterBottleCard } from "@/components/dashboard/water-bottle-card";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
 
 export default function Dashboard() {
   const now = new Date();
@@ -56,80 +57,94 @@ export default function Dashboard() {
         {data && (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
             {/* Unified Usage Card */}
-            <Card className="md:col-span-2 shadow-sm border-slate-200 overflow-hidden flex flex-col">
-              <CardHeader className="pb-4 border-b border-slate-100 z-10 bg-white">
-                <CardTitle className="text-xl flex items-center gap-2">
-                  Today's Usage
-                  <span className="text-xs font-medium bg-blue-50/80 backdrop-blur text-blue-700 px-2.5 py-1 rounded-full ml-auto">
-                    Mode: <span className="capitalize">{data.estimationMode}</span>
-                  </span>
-                </CardTitle>
-                <CardDescription>
-                  {data.totalCO2 != null || data.equivalence != null
-                    ? "All-time totals from your connected accounts"
-                    : "Real-time estimation based on prompt size"}
-                </CardDescription>
-                
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-50">
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700 bg-amber-50 px-2.5 py-1 rounded-md">
-                    <Zap size={16} className="text-amber-500" />
-                    <span>{data.today.tokens.toLocaleString()} tokens processed</span>
+            <ScrollReveal className="md:col-span-2">
+              <Card className="shadow-sm border-slate-200 overflow-hidden flex flex-col h-full">
+                <CardHeader className="pb-4 border-b border-slate-100 z-10 bg-white">
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    Today's Usage
+                    <span className="text-xs font-medium bg-blue-50/80 backdrop-blur text-blue-700 px-2.5 py-1 rounded-full ml-auto">
+                      Mode: <span className="capitalize">{data.estimationMode}</span>
+                    </span>
+                  </CardTitle>
+                  <CardDescription>
+                    {data.totalCO2 != null || data.equivalence != null
+                      ? "All-time totals from your connected accounts"
+                      : "Real-time estimation based on prompt size"}
+                  </CardDescription>
+                  
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-50">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700 bg-amber-50 px-2.5 py-1 rounded-md">
+                      <Zap size={16} className="text-amber-500" />
+                      <span>{data.today.tokens.toLocaleString()} tokens processed</span>
+                    </div>
+                    {data.equivalence && (
+                      <div className="flex items-center gap-1.5 text-sm text-slate-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100/50">
+                        <span>{data.equivalence}</span>
+                      </div>
+                    )}
                   </div>
-                  {data.equivalence && (
-                    <div className="flex items-center gap-1.5 text-sm text-slate-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100/50">
-                      <span>{data.equivalence}</span>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              
-              <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 flex-grow">
-                {/* Left Side: Water Card */}
-                <div className="flex-1">
-                  <WaterUsageCard 
-                    ml={data.today.ml} 
-                    limitMl={data.dailyLimitMl} 
-                  />
-                  {data.today.ml >= data.dailyLimitMl && (
-                    <div className="mt-4 p-3 bg-red-50/90 backdrop-blur text-red-800 text-sm rounded-xl flex items-start gap-2 border border-red-100 shadow-sm">
-                      <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-600" />
-                      <p className="font-medium"><strong>Warning:</strong> Exceeded daily water limit of {data.dailyLimitMl} mL.</p>
-                    </div>
-                  )}
-                </div>
+                </CardHeader>
+                
+                <div className="flex flex-col md:flex-row p-6 gap-6 bg-slate-50 flex-grow">
+                  {/* Left Side: Water Card */}
+                  <div className="flex-1">
+                    <WaterUsageCard 
+                      ml={data.today.ml} 
+                      limitMl={data.dailyLimitMl} 
+                    />
+                    {data.today.ml >= data.dailyLimitMl && (
+                      <div className="mt-4 p-3 bg-red-50/90 backdrop-blur text-red-800 text-sm rounded-xl flex items-start gap-2 border border-red-100 shadow-sm">
+                        <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-red-600" />
+                        <p className="font-medium"><strong>Warning:</strong> Exceeded daily water limit of {data.dailyLimitMl} mL.</p>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Right Side: CO2 Card */}
-                <div className="flex-1">
-                  <CO2EmissionsCard 
-                    co2Grams={data.today.tokens * 0.05} // Example mapping: 0.05g per token
-                    co2Limit={data.dailyLimitMl * 0.05} // Use same relative scale
-                  />
+                  {/* Right Side: CO2 Card */}
+                  <div className="flex-1">
+                    <CO2EmissionsCard 
+                      co2Grams={data.today.tokens * 0.05} // Example mapping: 0.05g per token
+                      co2Limit={data.dailyLimitMl * 0.05} // Use same relative scale
+                    />
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            </ScrollReveal>
 
             {/* By Provider Card */}
-            <Card className="shadow-sm border-slate-200 lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="text-lg">Tokens by AI Model</CardTitle>
-                <CardDescription>Breakdown of tokens processed per AI provider</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProviderBreakdown byProvider={data.byProvider} />
-              </CardContent>
-            </Card>
+            <ScrollReveal className="lg:col-span-1">
+              <Card className="shadow-sm border-slate-200 h-full">
+                <CardHeader>
+                  <CardTitle className="text-lg">Tokens by AI Model</CardTitle>
+                  <CardDescription>Breakdown of tokens processed per AI provider</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProviderBreakdown byProvider={data.byProvider} />
+                </CardContent>
+              </Card>
+            </ScrollReveal>
 
             {/* Perspective Card (Full Width underneath Usage, above Heatmap) */}
-            <div className="md:col-span-3">
-              <PerspectiveCard 
-                waterLiters={data.today.ml / 1000} // Convert mL to Liters
-                milesDrivenString={data.equivalence}
-                dailyLimitMl={data.dailyLimitMl}
-              />
-            </div>
+            <ScrollReveal className="md:col-span-3">
+              {({ entryCount }) => (
+                <PerspectiveCard 
+                  key={`perspective-${entryCount}`}
+                  waterLiters={data.today.ml / 1000} // Convert mL to Liters
+                  milesDrivenString={data.equivalence}
+                  dailyLimitMl={data.dailyLimitMl}
+                />
+              )}
+            </ScrollReveal>
 
             {/* Water Bottle Visualizer */}
-            <WaterBottleCard ml={data.today.ml} />
+            <ScrollReveal className="md:col-span-3">
+              {({ entryCount }) => (
+                <WaterBottleCard 
+                  key={`bottles-${entryCount}`}
+                  ml={data.today.ml} 
+                />
+              )}
+            </ScrollReveal>
           </div>
         )}
       </div>

@@ -38,23 +38,13 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
   const [hasAnimated, setHasAnimated] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
 
+  // We can simplify this effect since the parent ScrollReveal component
+  // will remount this component every time it enters the viewport.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasAnimated) {
-          // Add a tiny delay before starting animation for better visual effect
-          setTimeout(() => setHasAnimated(true), 300);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (trackRef.current) {
-      observer.observe(trackRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [hasAnimated]);
+    // Add a tiny delay before starting animation for better visual effect
+    const timer = setTimeout(() => setHasAnimated(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Determine text to show inside track
   const steps = Math.round(milesDriven * 2000);
@@ -65,7 +55,7 @@ export function PerspectiveCard({ waterLiters, milesDrivenString, dailyLimitMl }
   const animName = useMemo(() => `drive-${Math.random().toString(36).substr(2, 9)}`, []);
 
   return (
-    <Card className="shadow-sm border-slate-200 overflow-hidden">
+    <Card className="shadow-sm border-slate-200 overflow-hidden h-full">
       <CardHeader className="pb-3 border-b border-slate-100 bg-white">
         <div className="flex justify-between items-start">
           <div>
