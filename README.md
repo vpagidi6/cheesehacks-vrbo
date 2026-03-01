@@ -61,6 +61,10 @@ Supported domains:
 
 ### How the app computes impact
 
+We estimate water and carbon emissions based on token usage using methodologies grounded in recent research on AI energy and water consumption. Specifically, we reference the findings from "How Hungry is AI? Benchmarking Energy, Water, and Carbon Footprint of LLM Inference" (arXiv:2505.09598v1), which provides an infrastructure-level framework for associating inference workload with energy and cooling water use.
+
+Using this approach, we derive the following conversion formulas:
+
 - **Frontend water shown in dashboard:**
   - `todayMl = round(totalTokens × 0.5)`
 - **Backend water shown in API response:**
