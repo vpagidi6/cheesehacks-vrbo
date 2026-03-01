@@ -13,13 +13,18 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
   const NUM_POINTS = 50; 
   const springs = useRef(Array.from({ length: NUM_POINTS }, () => ({ p: 0, v: 0 })));
 
-  const numFishes = 5;
+  const numFishes = 6;
   const fishes = useRef(Array.from({ length: numFishes }, () => ({
-    x: Math.random() * 500, // will be clamped or wrapped
+    x: Math.random() * 500,
     y: Math.random() * 500,
-    vx: (Math.random() - 0.5) * 2,
-    vy: (Math.random() - 0.5) * 0.5,
-    scale: 0.5 + Math.random() * 0.4,
+    vx: 0,
+    vy: 0,
+    targetX: Math.random() * 500,
+    targetY: Math.random() * 500,
+    angle: Math.random() * Math.PI * 2,
+    speedMod: 0.5 + Math.random() * 1.0,
+    tailAngle: 0,
+    scale: 0.4 + Math.random() * 0.3,
     color: ['#f97316', '#fb923c', '#fdba74', '#ea580c'][Math.floor(Math.random() * 4)] // Orange hues
   })));
   const fishRefs = useRef<(SVGGElement | null)[]>([]);
@@ -146,49 +151,73 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
       
       // Update Fishes
       const fishYMin = surfaceY + 20; 
-      const fishYMax = h - 20;
+      const fishYMax = Math.max(surfaceY + 20, h - 20); // ensure max is >= min
       
       fishes.current.forEach((fish, i) => {
-        const isVisible = fillH > 40; // Only show fish if enough water
+        const isVisible = fillH > 40;
         
+        // Target seeking behavior
+        const dx = fish.targetX - fish.x;
+        const dy = fish.targetY - fish.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        // Assign new target if reached or randomly
+        if (dist < 20 || Math.random() < 0.005) {
+          fish.targetX = 20 + Math.random() * (w - 40);
+          fish.targetY = fishYMin + Math.random() * (fishYMax - fishYMin);
+          fish.speedMod = 0.5 + Math.random() * 1.0;
+        }
+
+        const targetAngle = Math.atan2(fish.targetY - fish.y, fish.targetX - fish.x);
+        
+        // Smooth angle interpolation
+        let angleDiff = targetAngle - fish.angle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        
+        // Max turn rate
+        const turnSpeed = 0.03;
+        if (Math.abs(angleDiff) > 0.01) {
+          fish.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), turnSpeed);
+        }
+
+        // Keep angle normalized
+        while (fish.angle > Math.PI) fish.angle -= Math.PI * 2;
+        while (fish.angle < -Math.PI) fish.angle += Math.PI * 2;
+
+        // Calculate velocity
+        const speed = 0.8 * (fish.speedMod || 1);
+        fish.vx = Math.cos(fish.angle) * speed;
+        fish.vy = Math.sin(fish.angle) * speed;
+
         fish.x += fish.vx;
         fish.y += fish.vy;
 
-        // Wrap around horizontally
-        if (fish.x < -50) fish.x = w + 50;
-        else if (fish.x > w + 50) fish.x = -50;
+        // Keep inside bounds gracefully
+        if (fish.y < fishYMin - 10) { fish.targetY = fishYMin + 20; }
+        if (fish.y > fishYMax + 10) { fish.targetY = fishYMax - 20; }
+        if (fish.x < -20) { fish.x = w + 20; fish.targetX = w / 2; }
+        if (fish.x > w + 20) { fish.x = -20; fish.targetX = w / 2; }
 
-        // Bounce off water surface / bottom
-        if (fish.y < fishYMin) {
-          fish.y = fishYMin;
-          fish.vy = Math.abs(fish.vy);
-        } else if (fish.y > fishYMax) {
-          fish.y = fishYMax;
-          fish.vy = -Math.abs(fish.vy);
-        }
-
-        // Randomly change direction/speed slightly
-        if (Math.random() < 0.02) {
-          fish.vx += (Math.random() - 0.5) * 0.5;
-          fish.vy += (Math.random() - 0.5) * 0.5;
-          
-          const maxVx = 1.5;
-          const minVx = 0.3;
-          if (fish.vx > 0) {
-            fish.vx = Math.max(minVx, Math.min(maxVx, fish.vx));
-          } else {
-            fish.vx = Math.min(-minVx, Math.max(-maxVx, fish.vx));
-          }
-          
-          fish.vy = Math.max(-0.5, Math.min(0.5, fish.vy));
-        }
+        // Tail Wiggle
+        const tailFreq = 15 + speed * 5;
+        fish.tailAngle = Math.sin(timeSec * tailFreq) * 20;
 
         const fishEl = fishRefs.current[i];
         if (fishEl) {
-           const scaleX = fish.vx < 0 ? -fish.scale : fish.scale;
            const displayOpacity = isVisible ? (isWarning ? 0.2 : 0.7) : 0;
-           fishEl.setAttribute('transform', `translate(${fish.x}, ${fish.y}) scale(${scaleX}, ${fish.scale})`);
+           const rotDeg = fish.angle * (180 / Math.PI);
+           
+           // Flip vertically if swimming left to prevent upside down
+           const flipScaleY = Math.cos(fish.angle) < 0 ? -1 : 1;
+           
+           fishEl.setAttribute('transform', `translate(${fish.x}, ${fish.y}) rotate(${rotDeg}) scale(${fish.scale}, ${fish.scale * flipScaleY})`);
            fishEl.setAttribute('opacity', displayOpacity.toString());
+           
+           const tailEl = fishEl.querySelector('.fish-tail');
+           if (tailEl) {
+             tailEl.setAttribute('transform', `rotate(${fish.tailAngle})`);
+           }
         }
       });
 
@@ -223,7 +252,8 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
         {/* Fishes */}
         {fishes.current.map((fish, i) => (
           <g key={i} ref={(el) => { if (el) fishRefs.current[i] = el; }} className="transition-opacity duration-1000">
-             <path d="M 0 0 C 10 -8 20 -4 25 0 C 20 4 10 8 0 0 Z M 0 0 L -8 -6 L -8 6 Z" fill={fish.color} />
+             <path className="fish-tail" d="M 0 0 L -10 -6 L -10 6 Z" fill={fish.color} />
+             <path d="M 0 0 C 10 -8 20 -4 25 0 C 20 4 10 8 0 0 Z" fill={fish.color} />
              <circle cx="18" cy="-1.5" r="1.5" fill="white" />
              <circle cx="18.5" cy="-1.5" r="0.8" fill="black" />
           </g>
