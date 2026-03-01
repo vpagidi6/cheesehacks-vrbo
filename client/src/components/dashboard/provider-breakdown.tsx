@@ -49,7 +49,7 @@ export function ProviderBreakdown({ byProvider }: { byProvider: Record<string, n
               <div className="font-medium text-slate-900 capitalize">
                 {PROVIDER_LABELS[key] ?? key}
               </div>
-              <div className="text-xs text-slate-500">{getPercent(val)}% of total</div>
+              <div className="text-xs text-slate-500">{getPercent(val)}% of tokens used</div>
             </div>
           </div>
           <div className="text-right">

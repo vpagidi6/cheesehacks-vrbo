@@ -129,8 +129,8 @@ export default function Dashboard() {
             {/* By Provider Card */}
             <Card className="shadow-sm border-slate-200">
               <CardHeader>
-                <CardTitle className="text-lg">Monthly By Provider</CardTitle>
-                <CardDescription>Water volume per AI model</CardDescription>
+                <CardTitle className="text-lg">Tokens by AI Model</CardTitle>
+                <CardDescription>Breakdown of tokens processed per AI provider</CardDescription>
               </CardHeader>
               <CardContent>
                 <ProviderBreakdown byProvider={data.byProvider} />
