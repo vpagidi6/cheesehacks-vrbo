@@ -37,8 +37,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-2">
-              <span className={`hidden sm:block ${scrolled ? 'text-slate-900' : 'text-slate-800'}`}>
-                <AnimatedLogo width="120" height="40" textColor={scrolled ? "#0f172a" : "#1e293b"} />
+              <span className={`hidden sm:block mt-1 ${scrolled ? 'text-slate-900' : 'text-slate-800'}`}>
+                <AnimatedLogo width="280" height="56" textColor={scrolled ? "#0f172a" : "#1e293b"} />
               </span>
             </div>
             

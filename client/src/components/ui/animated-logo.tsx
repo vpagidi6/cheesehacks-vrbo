@@ -22,8 +22,7 @@ export function AnimatedLogo({
         width={width} 
         height={height} 
         xmlns="http://www.w3.org/2000/svg" 
-        className="overflow-visible"
-        style={{ display: "block", height: "1em", width: "auto" }}
+        className="overflow-visible block"
       >
         <defs>
           {/* Turbulence for shimmer effect */}
