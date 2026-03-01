@@ -10,7 +10,8 @@ import { CalendarHeatmap } from "@/components/dashboard/calendar-heatmap";
 import { InteractiveWater } from "@/components/dashboard/interactive-water";
 
 export default function Dashboard() {
-  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['summary', currentMonth],

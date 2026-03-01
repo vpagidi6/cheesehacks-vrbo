@@ -5,7 +5,7 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
   const path1Ref = useRef<SVGPathElement>(null);
   const path2Ref = useRef<SVGPathElement>(null);
   
-  const reqRef = useRef<number>();
+  const reqRef = useRef<number | null>(null);
   const currentPercentage = useRef(0);
   const mouse = useRef({ x: -1, y: -1, isHovering: false, vY: 0, lastY: -1 });
   const inactivityTimer = useRef(0);
@@ -196,7 +196,9 @@ export function InteractiveWater({ percentage, isWarning }: { percentage: number
     };
 
     reqRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(reqRef.current!);
+    return () => {
+      if (reqRef.current !== null) cancelAnimationFrame(reqRef.current);
+    };
   }, [percentage, isWarning]);
 
   const baseColor = isWarning ? "text-red-500" : "text-blue-500";
