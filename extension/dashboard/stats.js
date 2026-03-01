@@ -20517,15 +20517,22 @@ This typically indicates that your device does not have a healthy Internet conne
         }
         const uid = user.uid;
         try {
+          let totalSum = 0;
+          const byProvider = {};
           for (const ev of pending) {
             const totalTokens = Number(ev.totalTokens) || 0;
             const provider = (ev.provider || "unknown").trim().toLowerCase();
-            await updateDoc(doc(db, "users", uid), {
-              totalTokens: increment(totalTokens),
-              [`totalByProvider.${provider}`]: increment(totalTokens),
-              updatedAt: serverTimestamp()
-            });
+            totalSum += totalTokens;
+            byProvider[provider] = (byProvider[provider] || 0) + totalTokens;
           }
+          const updates = {
+            totalTokens: increment(totalSum),
+            updatedAt: serverTimestamp()
+          };
+          for (const [provider, sum] of Object.entries(byProvider)) {
+            updates[`totalByProvider.${provider}`] = increment(sum);
+          }
+          await updateDoc(doc(db, "users", uid), updates);
           chrome.storage.local.set({ pendingFirestore: [] });
         } catch (err) {
           console.error("[sustAIn] Sync to Firestore failed:", err);
