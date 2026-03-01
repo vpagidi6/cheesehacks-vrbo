@@ -14,7 +14,7 @@ Server listens on **http://localhost:3000**.
 
 ### GET `/users/<uid>/stats`
 
-Returns usage numbers for the given Firebase user ID.
+Reads `totalTokens` and `totalByProvider` from Firestore, computes CO2, water, and equivalence stats, and returns enriched data for the frontend.
 
 **Example:** `curl http://localhost:3000/users/abc123/stats`
 
@@ -23,6 +23,11 @@ Returns usage numbers for the given Firebase user ID.
 {
   "totalTokens": 1500,
   "totalByProvider": { "chatgpt": 800, "claude": 700 },
-  "updatedAt": "2025-02-28T..."
+  "updatedAt": "2025-02-28T...",
+  "totalCO2_grams": 15,
+  "totalCO2_formatted": "15 g",
+  "totalWater_liters": 0.75,
+  "totalWater_formatted": "750 mL",
+  "equivalence": "~0.04 mi driven"
 }
 ```
