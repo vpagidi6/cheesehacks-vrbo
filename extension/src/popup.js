@@ -229,17 +229,6 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
   setAuthError("auth-error", "");
 });
 
-document.getElementById("btn-clear").addEventListener("click", async () => {
-  if (!confirm("Clear local usage data? (Cloud data is kept.)")) return;
-  const user = auth.currentUser;
-  chrome.storage.local.set({ pendingFirestore: [] });
-  if (user) {
-    await loadDashboard(user);
-  } else {
-    render({ totalTokens: 0, totalByProvider: {} });
-  }
-});
-
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   if (changes.pendingFirestore && auth.currentUser) {
