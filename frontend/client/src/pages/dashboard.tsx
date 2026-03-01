@@ -41,7 +41,7 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-lg font-semibold text-red-900">Failed to load data</h3>
                 <p className="text-sm text-red-600 mt-1 max-w-md mx-auto">
-                  {(error as Error).message}. Ensure your FastAPI backend is running and reachable at the configured VITE_API_BASE.
+                  {(error as Error).message}. Ensure you are logged in and the backend is reachable.
                 </p>
               </div>
               <Button onClick={() => refetch()} variant="outline" className="bg-white hover:bg-slate-50">
@@ -70,8 +70,14 @@ export default function Dashboard() {
                     </span>
                   </CardTitle>
                   <CardDescription>
-                    Real-time estimation based on prompt size
-                    <span className="ml-2 font-medium text-slate-700">({Math.round((data.today.ml / data.dailyLimitMl) * 100)}% of limit)</span>
+                    {data.totalCO2 != null || data.equivalence != null
+                      ? "All-time totals from your connected accounts"
+                      : "Real-time estimation based on prompt size"}
+                    {data.dailyLimitMl > 0 && (
+                      <span className="ml-2 font-medium text-slate-700">
+                        ({Math.round((data.today.ml / data.dailyLimitMl) * 100)}% of limit)
+                      </span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -81,10 +87,11 @@ export default function Dashboard() {
                         <Droplet size={28} />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-600 uppercase tracking-wider">Water Consumed</p>
+                        <p className="text-sm font-medium text-slate-600 uppercase tracking-wider">
+                          {data.totalWater != null ? "Water (est.)" : "Water Consumed"}
+                        </p>
                         <h4 className="text-4xl font-bold tracking-tight text-slate-900 mt-1">
-                          {data.today.ml.toLocaleString()}
-                          <span className="text-lg font-medium text-slate-500 ml-1">/ {data.dailyLimitMl.toLocaleString()} mL</span>
+                          {data.totalWater ?? `${data.today.ml.toLocaleString()} / ${data.dailyLimitMl.toLocaleString()} mL`}
                         </h4>
                       </div>
                     </div>
@@ -97,6 +104,11 @@ export default function Dashboard() {
                         <h4 className="text-4xl font-bold tracking-tight text-slate-900 mt-1">
                           {data.today.tokens.toLocaleString()}
                         </h4>
+                        {data.totalCO2 != null && (
+                          <p className="text-sm text-slate-500 mt-1">
+                            CO₂: {data.totalCO2} · {data.equivalence}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>

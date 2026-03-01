@@ -1,8 +1,10 @@
-import { SummaryResponse, EstimationMode } from "./types";
+import { SummaryResponse, EstimationMode, BackendStatsResponse } from "./types";
 import { auth } from "@/lib/firebase";
 
-const USE_MOCK = true;
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
+const API_BASE = import.meta.env.VITE_API_BASE || "https://eco-backend-316882873742.us-central1.run.app";
+
+const ML_PER_TOKEN = 0.5;
 
 export function getUser(): string | null {
   return auth.currentUser?.uid ?? null;
@@ -16,20 +18,45 @@ export function clearUser(): void {
   // No-op: use signOut from useAuth
 }
 
-export async function fetchSummary(month: string): Promise<SummaryResponse> {
+function mapBackendStatsToSummary(stats: BackendStatsResponse): SummaryResponse {
+  const today = new Date().toISOString().slice(0, 10);
+  const totalTokens = stats.totalTokens ?? 0;
+  const todayMl = Math.round(totalTokens * ML_PER_TOKEN);
+  return {
+    today: {
+      ml: todayMl,
+      tokens: totalTokens,
+      date: today,
+    },
+    dailyLimitMl: 500,
+    estimationMode: "range",
+    monthDays: [],
+    byProvider: stats.totalByProvider ?? {},
+    totalCO2: stats.totalCO2,
+    totalWater: stats.totalWater,
+    equivalence: stats.equivalence,
+  };
+}
+
+export async function fetchSummary(_month: string): Promise<SummaryResponse> {
   if (USE_MOCK) {
-    await new Promise(r => setTimeout(r, 400)); // fake loading delay
+    await new Promise((r) => setTimeout(r, 400));
     return mockSummary;
   }
 
-  const user = getUser();
+  const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
 
-  const res = await fetch(`${API_BASE}/api/summary?user=${encodeURIComponent(user)}&month=${month}`);
+  const idToken = await user.getIdToken();
+  const res = await fetch(`${API_BASE}/users/me/stats`, {
+    headers: { Authorization: `Bearer ${idToken}` },
+  });
   if (!res.ok) {
-    throw new Error(`Failed to fetch summary: ${res.statusText}`);
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || `Failed to fetch stats: ${res.statusText}`);
   }
-  return res.json();
+  const data: BackendStatsResponse = await res.json();
+  return mapBackendStatsToSummary(data);
 }
 
 export async function saveSettings(

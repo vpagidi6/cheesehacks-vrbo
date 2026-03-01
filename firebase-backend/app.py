@@ -125,20 +125,34 @@ def get_user_stats():
 
         totals = {"totalTokens": 0, "totalByProvider": {}}
         if user_snap.exists:
-            totals = user_snap.to_dict()
+            raw = user_snap.to_dict()
+            if raw:
+                totals = raw
 
-        total_tokens = totals.get("totalTokens", 0) or 0
-        total_by_provider = totals.get("totalByProvider", {}) or {}
+        try:
+            total_tokens = int(totals.get("totalTokens") or 0)
+        except (TypeError, ValueError):
+            total_tokens = 0
+
+        raw_by = totals.get("totalByProvider") or {}
+        total_by_provider = {}
+        if isinstance(raw_by, dict):
+            for k, v in raw_by.items():
+                try:
+                    total_by_provider[str(k)] = int(v) if v is not None else 0
+                except (TypeError, ValueError):
+                    total_by_provider[str(k)] = 0
 
         stats = _compute_stats(total_tokens)
 
-        return jsonify({
+        out = {
             "totalTokens": total_tokens,
             "totalByProvider": total_by_provider,
             "totalCO2": stats["totalCO2_formatted"],
             "totalWater": stats["totalWater_formatted"],
             "equivalence": stats["equivalence"],
-        })
+        }
+        return jsonify(_to_json_safe(out))
 
     except Exception as e:
         return jsonify({"error": str(e)}), 401
